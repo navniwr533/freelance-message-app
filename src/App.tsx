@@ -1,13 +1,3 @@
-      <style>{`
-        input, input:focus, input:hover, textarea, textarea:focus, textarea:hover {
-          cursor: none !important;
-        }
-        @keyframes spark-pop {
-          0% { opacity: 0.9; transform: scale(0.7) rotate(0deg); }
-          60% { opacity: 1; transform: scale(1.1) rotate(20deg); }
-          100% { opacity: 0; transform: scale(1.3) rotate(40deg); }
-        }
-      `}</style>
 import React, { useState, useRef } from 'react';
 // import { useMotionValue, useSpring } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -57,6 +47,7 @@ function App() {
   const [template, setTemplate] = useState(templates[0].value);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   // For global custom cursor (zero latency, follows mouse exactly)
   const [cursorPos, setCursorPos] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
 
@@ -68,7 +59,7 @@ function App() {
     const move = (e: MouseEvent) => {
       setCursorPos({ x: e.clientX, y: e.clientY });
     };
-    window.addEventListener('mousemove', move);
+    window.addEventListener('mousemove', move, { passive: true });
     return () => window.removeEventListener('mousemove', move);
   }, []);
 
@@ -78,23 +69,17 @@ function App() {
     return () => { document.body.style.cursor = ''; };
   }, []);
 
-  // Clean up AI message to be copy-paste ready
+  // Minimal cleanup: preserve content, format basic markup
   function cleanMessage(text: string) {
     if (!text) return '';
-    // Remove lines with instructions, brackets, or emojis
     return text
-      .split(/\n|<br\s*\/?\s*>/i)
-      .filter(line =>
-        !/\[.*?\]/.test(line) && // remove lines with [brackets]
-        !/\b(Here’s|Here's|Adjust|instructions|copy|paste|remove|replace|brackets|placeholder|\bmessage you can send\b)/i.test(line) &&
-        !/😊|😃|😄|😉|🙂|😅|😆|😎|😏|😇|😜|😋|😙|😚|😛|😝|😤|😢|😥|😰|😱|😳|😵|😡|😠|😷|😴|😪|😬|😯|😦|😧|😮|😲|😵|😶|😐|😑|😒|😓|😔|😕|😖|😞|😟|😢|😭|😦|😧|😨|😩|😰|😱|😳|😵|😡|😠|😷|😴|😪|😬|😯|😦|😧|😮|😲|😵|😶|😐|😑|😒|😓|😔|😕|😖|😞|😟|😢|😭/.test(line)
-      )
-      .map(line => line.replace(/\[.*?\]/g, '')) // remove any remaining [brackets]
-      .map(line => line.replace(/"/g, '')) // remove extra quotes
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .join('<br>');
+      .trim()
+      .replace(/\n/g, '<br>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
+
+  // (Removed offline fallback generator per request; focusing on real AI responses only)
 
   // Usage count for free/pro logic
   const [usage, setUsage] = useState(() => {
@@ -116,22 +101,205 @@ function App() {
       return;
     }
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_description: project,
-          message_purpose: intent + (template ? (' ' + template) : ''),
-          proToken: isPro ? 'demo-pro-token' : undefined,
-        }),
-      });
-      const data = await res.json();
-      let message = null;
-      if (data.message?.content) message = data.message.content;
-      else if (Array.isArray(data.message) && data.message.length > 0) message = data.message[0];
-      else if (typeof data.message === 'string') message = data.message;
-      else if (Array.isArray(data.choices) && data.choices[0]?.message?.content) message = data.choices[0].message.content;
-      if (!message) message = '⚠️ No message found. Full response:<br><code>' + JSON.stringify(data, null, 2) + '</code>';
+  // ULTRA SIMPLE prompt that even dumb AI can follow
+      let systemPrompt = "";
+      let userPrompt = "";
+      
+      // Classify intent and build targeted prompts so output matches the freelancer's goal
+      const lcIntent = (intent || '').toLowerCase();
+      const isCancel = /cancel|not\s*proceed|withdraw|decline|can't\s*continue|unable\s*to\s*continue/.test(lcIntent);
+      const isPrice = /price|budget|rate|increase|raise|adjust/.test(lcIntent);
+      const isTimeline = /deadline|timeline|delay|postpone|extend/.test(lcIntent);
+      const isApology = /sorry|apologize|regret|unfortunately/.test(lcIntent);
+      const isGratitude = /thank|appreciate|gratitude/.test(lcIntent);
+      const isImprove = /improve|enhance|upgrade|better|add\s*value|next\s*level/.test(lcIntent);
+      const isPersonal = /about\s*(you|her|him|son|daughter|child|kid)|your\s*(background|profile|experience)|personal\s*details|who\s*you\s*are|more\s*about\s*(you|him|her|son|daughter|child|kid)|only\s*(about|regarding)\s*(you|him|her|son|daughter|child|kid)/.test(lcIntent);
+
+      // Detect family/person focus for personal-only cases
+      let personFocus = 'the client';
+      if (isPersonal) {
+        if (/son/.test(lcIntent)) personFocus = "their son";
+        else if (/daughter/.test(lcIntent)) personFocus = "their daughter";
+        else if (/(child|kid)/.test(lcIntent)) personFocus = "their child";
+        else if (/(her|him)\s+only|only\s+about\s*(her|him)/.test(lcIntent)) personFocus = 'the client';
+      }
+
+      // Extract freelancer name if provided, e.g., "my name is navni"
+      const nameMatch = /my name is\s+([\w .'-]{1,40})/i.exec(intent || '');
+      const freelancerName = nameMatch ? nameMatch[1].trim() : '';
+
+      // Tone handling
+      const tone = (template || '').toLowerCase();
+      const toneHint = tone.includes('concise')
+        ? 'Keep it to 1-2 sentences, no lists.'
+        : tone.includes('formal')
+        ? 'Use a professional, measured tone. Prefer short paragraphs over lists.'
+        : tone.includes('friendly')
+        ? 'Sound warm and approachable. Prefer a short paragraph; avoid bullets unless truly needed.'
+        : tone.includes('apology')
+        ? 'Include a polite, brief apology.'
+        : tone.includes('gratitude')
+        ? 'Express brief, genuine appreciation.'
+        : 'Short paragraph, natural tone, avoid bullets unless necessary.';
+
+      // Goal based on intent
+      let goal = '';
+      if (isCancel) goal = 'Politely decline proceeding with the project.';
+      else if (isPrice) goal = 'Discuss pricing transparently and propose a call or range if appropriate.';
+      else if (isTimeline) goal = 'Request a reasonable timeline extension and confirm constraints.';
+      else if (isApology) goal = 'Deliver a brief apology and restate your intended action.';
+      else if (isGratitude) goal = 'Thank them and express enthusiasm to collaborate.';
+      else if (isImprove) goal = 'Propose a higher-value approach without sounding pushy.';
+  else if (isPersonal) goal = `Ask only about ${personFocus} (not features). Useful aspects: role in decisions, preferred communication, availability/time zone, and any accessibility or usage considerations.`;
+      else goal = 'Respond helpfully to their request and ask only the minimal, relevant follow-ups.';
+
+      // Guardrails
+      const rules = [
+        'Treat the first input as the client request and the second as the freelancer intent.',
+        "Do not restate the client's text verbatim; paraphrase naturally.",
+  'Avoid assumptions and avoid generic checklists.',
+  isPersonal ? `Do NOT ask about app features, budget, or tech; ask only about ${personFocus}.` : 'Ask only questions aligned with the stated intent.',
+  'Do not invent or guess any names. No placeholders like [Client\'s Name] or [Your Name].',
+  freelancerName ? `You may sign off with "${freelancerName}" (first name only). Do not introduce yourself in the opening.` : 'Do not include your own name in the message.',
+  'Do not address the client by name unless an explicit client name is provided in inputs.',
+        toneHint,
+      ].join(' ');
+
+      systemPrompt = `You write short, professional client messages. ${rules}`;
+
+      // Compose user prompt with explicit goal and context
+      userPrompt = [
+        `Client request/context: ${project}`,
+        `Freelancer intent/goal: ${intent}`,
+        freelancerName ? `Freelancer name to optionally sign with: ${freelancerName}` : 'No freelancer name provided; do not include one.',
+        isPersonal ? `Person to focus on: ${personFocus}` : 'Not a personal-only request.',
+        `Your objective: ${goal}`,
+        'Output only the final message to the client (one short paragraph).',
+      ].join('\n');
+      
+      console.log('=== DEBUG PROMPTS ===');
+      console.log('System Prompt:', systemPrompt);
+      console.log('User Prompt:', userPrompt);
+      console.log('===================');
+
+      // If no API key, stop here (no offline fallback per request)
+      if (!import.meta.env.VITE_OPENROUTER_API_KEY) {
+        setOutput('<span style="color:#f87171;">❌ Missing OpenRouter API key. Set VITE_OPENROUTER_API_KEY in .env and restart the dev server.</span>');
+        setLoading(false);
+        return;
+      }
+
+      // Faster, world-class routing: per-tone model priority + parallel race with timeouts
+      const toneKey = (template || '').toLowerCase();
+      const getOrderedModels = () => {
+        // Base pool
+        const base = [
+          'deepseek/deepseek-chat-v3-0324:free',
+          'meta-llama/llama-3.1-8b-instruct:free',
+          'google/gemma-2-9b-it:free',
+          'mistralai/mistral-7b-instruct:free',
+          'qwen/qwen-2.5-7b-instruct:free',
+        ];
+        if (toneKey.includes('formal') || toneKey.includes('concise')) {
+          return [
+            'meta-llama/llama-3.1-8b-instruct:free',
+            'google/gemma-2-9b-it:free',
+            'deepseek/deepseek-chat-v3-0324:free',
+            'mistralai/mistral-7b-instruct:free',
+            'qwen/qwen-2.5-7b-instruct:free',
+          ];
+        }
+        if (toneKey.includes('apology') || toneKey.includes('gratitude')) {
+          return [
+            'meta-llama/llama-3.1-8b-instruct:free',
+            'deepseek/deepseek-chat-v3-0324:free',
+            'google/gemma-2-9b-it:free',
+            'mistralai/mistral-7b-instruct:free',
+            'qwen/qwen-2.5-7b-instruct:free',
+          ];
+        }
+        // Friendly/default
+        return base;
+      };
+
+      const getToneSettings = () => {
+        if (toneKey.includes('concise')) return { temperature: 0.25, maxTokens: 120 };
+        if (toneKey.includes('formal')) return { temperature: 0.3, maxTokens: 160 };
+        if (toneKey.includes('apology') || toneKey.includes('gratitude')) return { temperature: 0.35, maxTokens: 160 };
+        if (toneKey.includes('friendly')) return { temperature: 0.5, maxTokens: 180 };
+        return { temperature: 0.4, maxTokens: 180 };
+      };
+
+      const orderedModels = getOrderedModels();
+      const { temperature, maxTokens } = getToneSettings();
+
+      const callModel = (model: string, signal: AbortSignal) =>
+        fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Client Message Generator',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            max_tokens: maxTokens,
+            temperature,
+            top_p: 0.9,
+          }),
+          signal,
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              const errText = await res.text();
+              throw new Error(`HTTP ${res.status} ${res.statusText}: ${errText}`);
+            }
+            const data = await res.json();
+            const content = data?.choices?.[0]?.message?.content;
+            if (!content) throw new Error('No content in choices');
+            return content as string;
+          });
+
+      const raceBatch = async (models: string[], timeoutMs = 12000) => {
+        const controllers = models.map(() => new AbortController());
+        const timers: any[] = [];
+        try {
+          const promises = models.map((m, i) => {
+            const controller = controllers[i];
+            timers[i] = setTimeout(() => controller.abort(), timeoutMs);
+            return callModel(m, controller.signal);
+          });
+          const result = await Promise.any(promises);
+          return result as string;
+        } finally {
+          controllers.forEach((c) => c.abort());
+          timers.forEach((t) => clearTimeout(t));
+        }
+      };
+
+      let message: string | null = null;
+      let lastError: any = null;
+      // Race in small batches for speed and lower rate-limits impact
+      for (let i = 0; i < orderedModels.length && !message; i += 2) {
+        const batch = orderedModels.slice(i, i + 2);
+        try {
+          const res = await raceBatch(batch);
+          if (res) message = res;
+        } catch (e) {
+          lastError = e;
+          console.warn('Batch failed', batch, e);
+        }
+      }
+
+      if (!message) {
+        if (lastError) console.warn('OpenRouter last error (no fallback):', lastError);
+        message = '❌ AI request failed. Check console for details (OpenRouter status) and ensure your API key is valid.';
+      }
       setOutput(cleanMessage(message));
       // Save to history
       const newHistory = [
@@ -203,9 +371,8 @@ function App() {
         style={{
           minHeight: '100vh',
           width: '100vw',
-          overflow: 'hidden',
-          position: 'fixed',
-          inset: 0,
+          overflow: 'auto',
+          position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -298,7 +465,7 @@ function App() {
             borderRadius: '1.3rem',
             boxShadow: '0 8px 32px 0 rgba(0,0,0,0.10), 0 1.5px 8px 0 rgba(214,169,157,0.08) inset',
             padding: '2.5rem 1.2rem 2rem 1.2rem',
-            maxWidth: 540,
+            maxWidth: 680,
             minWidth: 320,
             width: '100%',
             margin: '2rem 0',
@@ -374,7 +541,7 @@ function App() {
             <div style={{ cursor: 'none' }}>
               <motion.input
                 type="text"
-                placeholder="Client project description"
+                placeholder="e.g., 'ecommerce website for handmade jewelry', 'mobile app for fitness tracking'"
                 value={project}
                 onChange={e => setProject(e.target.value)}
                 required
@@ -399,7 +566,7 @@ function App() {
             <div style={{ cursor: 'none' }}>
               <motion.input
                 type="text"
-                placeholder="What do you want to say?"
+                placeholder="e.g., 'want to negotiate higher rate', 'need to propose timeline extension'"
                 value={intent}
                 onChange={e => setIntent(e.target.value)}
                 required
@@ -548,8 +715,98 @@ function App() {
                 )}
               </motion.div>
             )}
-            {/* Message history, share, export, donate */}
-            {history.length > 0 && (
+            {/* History Toggle Icon & Monetization */}
+            <div style={{ 
+              marginTop: '1.5rem', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              width: '100%',
+              gap: '1rem'
+            }}>
+              {/* History Toggle */}
+              {history.length > 0 && (
+                <motion.button
+                  onClick={() => setShowHistory(!showHistory)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    background: showHistory ? palette.purple : palette.sand,
+                    color: showHistory ? palette.cream : palette.black,
+                    border: `3px solid ${showHistory ? palette.cream : palette.black}`,
+                    borderRadius: '10px',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'none',
+                    boxShadow: `0 4px 12px 0 ${palette.sand}66`,
+                    transition: 'all 0.2s',
+                    fontSize: '18px',
+                    fontWeight: 'bold'
+                  }}
+                  title="Toggle Message History"
+                >
+                  🕒
+                </motion.button>
+              )}
+              
+              {/* Monetization Buttons */}
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                <motion.a
+                  href="https://ko-fi.com/bluemoonsoon"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    background: `linear-gradient(45deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
+                    color: palette.black,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    border: 'none',
+                    borderRadius: '0.6rem',
+                    padding: '0.6rem 1rem',
+                    fontSize: '0.9rem',
+                    cursor: 'none',
+                    boxShadow: `0 2px 8px 0 ${palette.sand}33`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  ☕ Tip
+                </motion.a>
+                
+                <motion.button
+                  onClick={() => navigator.share ? navigator.share({
+                    title: 'Client Message Generator',
+                    text: 'Check out this amazing AI tool for freelancers!',
+                    url: window.location.href
+                  }) : navigator.clipboard.writeText(window.location.href)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  style={{
+                    background: palette.black,
+                    color: palette.cream,
+                    border: `1px solid ${palette.sage}`,
+                    borderRadius: '0.6rem',
+                    padding: '0.6rem',
+                    cursor: 'none',
+                    boxShadow: `0 2px 8px 0 ${palette.sand}22`,
+                  }}
+                  title="Share this tool"
+                >
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M15 8a3 3 0 1 0-2.977-2.63l-4.94 2.47a3 3 0 1 0 0 4.319l4.94 2.47a3 3 0 1 0 .895-1.789l-4.94-2.47a3.027 3.027 0 0 0 0-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z"/>
+                  </svg>
+                </motion.button>
+              </div>
+            </div>
+            
+            {/* Message history (toggled) */}
+            {showHistory && history.length > 0 && (
               <div style={{ marginTop: '2.2rem', background: palette.sand, borderRadius: 12, padding: '1.1rem 1.2rem', boxShadow: `0 1.5px 8px 0 ${palette.sage}22`, color: palette.black, maxWidth: 600, width: '100%' }}>
                 <div style={{ fontWeight: 700, fontSize: '1.08rem', marginBottom: '0.7rem', color: palette.purple, letterSpacing: '-0.5px' }}>Message History</div>
                 <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
