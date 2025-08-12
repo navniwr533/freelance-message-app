@@ -182,9 +182,10 @@ function App() {
       console.log('User Prompt:', userPrompt);
       console.log('===================');
 
-      // If no API key, stop here (no offline fallback per request)
-      if (!import.meta.env.VITE_OPENROUTER_API_KEY) {
-        setOutput('<span style="color:#f87171;">❌ Missing OpenRouter API key. Set VITE_OPENROUTER_API_KEY in .env and restart the dev server.</span>');
+      const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
+      const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
+      if (!API_BASE && !OPENROUTER_KEY) {
+        setOutput('<span style="color:#f87171;">❌ Missing API config. Set VITE_API_BASE_URL (preferred) to your Worker URL, or set VITE_OPENROUTER_API_KEY in .env and restart.</span>');
         setLoading(false);
         return;
       }
@@ -233,12 +234,12 @@ function App() {
       const orderedModels = getOrderedModels();
       const { temperature, maxTokens } = getToneSettings();
 
-      const callModel = (model: string, signal: AbortSignal) =>
+      const callModelDirect = (model: string, signal: AbortSignal) =>
         fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+            'Authorization': `Bearer ${OPENROUTER_KEY}`,
             'HTTP-Referer': window.location.origin,
             'X-Title': 'Client Message Generator',
           },
@@ -265,14 +266,36 @@ function App() {
             return content as string;
           });
 
-      const raceBatch = async (models: string[], timeoutMs = 12000) => {
+      // Server-side path: call our API/generate once; no need to race models client-side.
+      const callServer = async (): Promise<string> => {
+        const res = await fetch(`${API_BASE}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            project_description: project,
+            message_purpose: intent,
+            // Let server choose model; keep for compatibility
+            model: orderedModels[0],
+          }),
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`Server API error: ${res.status} ${t}`);
+        }
+        const data = await res.json();
+        const content = data?.message;
+        if (!content) throw new Error('No message in response');
+        return content as string;
+      };
+
+  const raceBatch = async (models: string[], timeoutMs = 12000) => {
         const controllers = models.map(() => new AbortController());
         const timers: any[] = [];
         try {
           const promises = models.map((m, i) => {
             const controller = controllers[i];
             timers[i] = setTimeout(() => controller.abort(), timeoutMs);
-            return callModel(m, controller.signal);
+    return callModelDirect(m, controller.signal);
           });
           const result = await Promise.any(promises);
           return result as string;
@@ -284,15 +307,24 @@ function App() {
 
       let message: string | null = null;
       let lastError: any = null;
-      // Race in small batches for speed and lower rate-limits impact
-      for (let i = 0; i < orderedModels.length && !message; i += 2) {
-        const batch = orderedModels.slice(i, i + 2);
+      if (API_BASE) {
         try {
-          const res = await raceBatch(batch);
-          if (res) message = res;
+          message = await callServer();
         } catch (e) {
           lastError = e;
-          console.warn('Batch failed', batch, e);
+          console.warn('Server generate failed', e);
+        }
+      } else {
+        // Race in small batches for speed and lower rate-limits impact (direct OpenRouter)
+        for (let i = 0; i < orderedModels.length && !message; i += 2) {
+          const batch = orderedModels.slice(i, i + 2);
+          try {
+            const result = await raceBatch(batch);
+            if (result) message = result;
+          } catch (e) {
+            lastError = e;
+            console.warn('Batch failed', batch, e);
+          }
         }
       }
 
