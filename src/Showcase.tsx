@@ -24,11 +24,12 @@ export default function Showcase() {
         <motion.h3 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} style={{ color: palette.cream, fontWeight: 800, fontSize: 'clamp(1.4rem, 3vw, 2rem)', letterSpacing: '-0.5px', marginBottom: 18 }}>
           Selected Work
         </motion.h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
           {projects.map((p, i) => (
             <motion.div key={p.name} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.55, delay: i * 0.06 }}
-              style={{ borderRadius: 16, overflow: 'hidden', border: `2px solid ${palette.sand}`, background: `linear-gradient(135deg, ${p.tone[0]} 0%, ${p.tone[1]} 100%)`, boxShadow: `0 10px 30px ${palette.sand}22` }}>
-              <div style={{ padding: '1rem 1rem 3rem 1rem', color: p.tone[0] === '#18181b' ? palette.cream : palette.black }}>
+              whileHover={{ y: -6, boxShadow: `0 18px 40px ${palette.sand}33` }}
+              style={{ borderRadius: 16, overflow: 'hidden', border: `2px solid ${palette.sand}`, background: `linear-gradient(135deg, ${p.tone[0]} 0%, ${p.tone[1]} 100%)`, boxShadow: `0 10px 30px ${palette.sand}22`, aspectRatio: '4 / 3', display: 'flex', alignItems: 'flex-end' }}>
+              <div style={{ padding: '1rem 1rem 1.2rem 1rem', width: '100%', background: '#00000022', backdropFilter: 'blur(2px)', color: p.tone[0] === '#18181b' ? palette.cream : palette.black }}>
                 <div style={{ fontWeight: 800, fontSize: '1.15rem' }}>{p.name}</div>
                 <div style={{ marginTop: 4, opacity: 0.9 }}>{p.tag}</div>
               </div>
