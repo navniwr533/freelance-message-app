@@ -1,12 +1,12 @@
 {
   "version": 2,
   "builds": [
-    { "src": "agentwantsit/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
+    { "src": "agentwantsit/package.json", "use": "@vercel/static-build", "config": { "distDir": "agentwantsit/dist" } },
     { "src": "agentwantsit/api/**/*.ts", "use": "@vercel/node" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/agentwantsit/api/$1" },
     { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "/agentwantsit/dist/index.html" }
   ]
 }
