@@ -6,6 +6,8 @@ import Landing from './Landing';
 import Capabilities from './Capabilities';
 import Showcase from './Showcase';
 import Footer from './Footer';
+import Contact from './Contact';
+import Nav from './Nav';
 
 function App() {
   // ...existing code (all hooks, functions, etc.)...
@@ -401,6 +403,7 @@ function App() {
 
   return (
     <>
+      <Nav />
   {/* Landing hero */}
   <Landing onStart={handleStart} />
   {/* Showcase section */}
@@ -1036,7 +1039,8 @@ function App() {
         </motion.div>
   </motion.div>
   {/* Studio-style sections */}
-  <Capabilities />
+  <div id="capabilities"><Capabilities /></div>
+  <Contact />
   <Footer />
       {/* Hide text cursor (I-beam) on all input fields */}
       <style>{`
