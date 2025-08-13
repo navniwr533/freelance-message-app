@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 // import { useMotionValue, useSpring } from 'framer-motion';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
+import Landing from './Landing';
 
 function App() {
   // ...existing code (all hooks, functions, etc.)...
@@ -15,6 +16,12 @@ function App() {
     purple: '#7c3aed',
     white: '#fff',
   };
+
+  // Smooth scroll from landing to app
+  function handleStart() {
+    const el = document.getElementById('app-root');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   function handleCopy() {
     const tempDiv = document.createElement('div');
@@ -112,25 +119,30 @@ function App() {
 
   // (Removed offline fallback generator per request; focusing on real AI responses only)
 
-  // Usage count for free/pro logic
-  const [usage, setUsage] = useState(() => {
-    const saved = localStorage.getItem('usageCount');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-  const [isPro, setIsPro] = useState(() => {
-    return localStorage.getItem('isPro') === 'true';
-  });
+  // Usage/Pro (disabled: app is free). Keeping minimal state to avoid bigger refactors.
+  // Free mode: no usage or pro state
+
+  // Optional: UPI donate config (set in Vercel env as VITE_UPI_ID and VITE_UPI_NAME)
+  const UPI_ID = (import.meta as any).env?.VITE_UPI_ID as string | undefined;
+  const UPI_NAME = (import.meta as any).env?.VITE_UPI_NAME as string | undefined;
+  const makeUpiLink = (amount?: number, note = 'Support the project') => {
+    if (!UPI_ID) return '';
+    const parts = [
+      `pa=${encodeURIComponent(UPI_ID)}`,
+      `pn=${encodeURIComponent(UPI_NAME || 'Creator')}`,
+      'cu=INR',
+    ];
+    if (amount) parts.push(`am=${encodeURIComponent(String(amount))}`);
+    if (note) parts.push(`tn=${encodeURIComponent(note)}`);
+    return `upi://pay?${parts.join('&')}`;
+  };
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setOutput('<span style="color:' + palette.sand + '">⏳ Generating message...</span>');
     setCopied(false);
-    if (!isPro && usage >= 5) {
-      setOutput('<span style="color:#f87171;">🚫 Free limit reached. Upgrade to Pro for unlimited messages.</span>');
-      setLoading(false);
-      return;
-    }
+  // No paywall: unlimited generations
     try {
   // ULTRA SIMPLE prompt that even dumb AI can follow
       let systemPrompt = "";
@@ -213,13 +225,8 @@ function App() {
       console.log('User Prompt:', userPrompt);
       console.log('===================');
 
-      const API_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
-      const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
-      if (!API_BASE && !OPENROUTER_KEY) {
-        setOutput('<span style="color:#f87171;">❌ Missing API config. Set VITE_API_BASE_URL (preferred) to your Worker URL, or set VITE_OPENROUTER_API_KEY in .env and restart.</span>');
-        setLoading(false);
-        return;
-      }
+  const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ?? '';
+  const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
 
       // Faster, world-class routing: per-tone model priority + parallel race with timeouts
       const toneKey = (template || '').toLowerCase();
@@ -336,16 +343,18 @@ function App() {
         }
       };
 
-      let message: string | null = null;
-      let lastError: any = null;
-      if (API_BASE) {
+  let message: string | null = null;
+  let lastError: any = null;
+  // Prefer calling our serverless API (relative path works on Vercel). If that fails and a BYOK exists, fall back to direct OpenRouter.
+  if (true) {
         try {
           message = await callServer();
         } catch (e) {
           lastError = e;
           console.warn('Server generate failed', e);
         }
-      } else {
+  }
+  if (!message && OPENROUTER_KEY) {
         // Race in small batches for speed and lower rate-limits impact (direct OpenRouter)
         for (let i = 0; i < orderedModels.length && !message; i += 2) {
           const batch = orderedModels.slice(i, i + 2);
@@ -359,7 +368,7 @@ function App() {
         }
       }
 
-      if (!message) {
+  if (!message) {
         if (lastError) console.warn('OpenRouter last error, using fallback:', lastError);
         // Simple template-based fallback for when OpenRouter fails (e.g., no credit)
         message = generateOfflineFallback(project, intent, template);
@@ -378,24 +387,21 @@ function App() {
       ];
       setHistory(newHistory);
       localStorage.setItem('messageHistory', JSON.stringify(newHistory));
-      if (!isPro) {
-        const newUsage = usage + 1;
-        setUsage(newUsage);
-        localStorage.setItem('usageCount', newUsage.toString());
-      }
+    // Usage counting disabled in free mode
     } catch (err) {
       setOutput('<span style="color:#f87171;">❌ Failed to generate message. Check console.</span>');
     }
     setLoading(false);
   }
 
-  function handleUpgrade() {
-    setIsPro(true);
-    localStorage.setItem('isPro', 'true');
-  }
+  // Upgrade disabled (free forever)
 
   return (
     <>
+  {/* Landing hero */}
+  <Landing onStart={handleStart} />
+  {/* Anchor for smooth scroll into app */}
+  <div id="app-root" style={{ position: 'relative' }} />
       {/* Click spark effect removed for speed */}
 
       {/* Custom global cursor */}
@@ -818,30 +824,55 @@ function App() {
               
               {/* Monetization Buttons */}
               <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                <motion.a
-                  href="https://ko-fi.com/bluemoonsoon"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-                    background: `linear-gradient(45deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
-                    color: palette.black,
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                    border: 'none',
-                    borderRadius: '0.6rem',
-                    padding: '0.6rem 1rem',
-                    fontSize: '0.9rem',
-                    cursor: 'none',
-                    boxShadow: `0 2px 8px 0 ${palette.sand}33`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.4rem'
-                  }}
-                >
-                  ☕ Tip
-                </motion.a>
+                {(makeUpiLink(75) ? (
+                  <motion.a
+                    href={makeUpiLink(75, 'Thanks for the tool!')}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{
+                      background: `linear-gradient(45deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
+                      color: palette.black,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      border: 'none',
+                      borderRadius: '0.6rem',
+                      padding: '0.6rem 1rem',
+                      fontSize: '0.9rem',
+                      cursor: 'none',
+                      boxShadow: `0 2px 8px 0 ${palette.sand}33`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    ✨ UPI Tip
+                  </motion.a>
+                ) : (
+                  <motion.a
+                    href="https://ko-fi.com/bluemoonsoon"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    style={{
+                      background: `linear-gradient(45deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
+                      color: palette.black,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      border: 'none',
+                      borderRadius: '0.6rem',
+                      padding: '0.6rem 1rem',
+                      fontSize: '0.9rem',
+                      cursor: 'none',
+                      boxShadow: `0 2px 8px 0 ${palette.sand}33`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem'
+                    }}
+                  >
+                    ☕ Tip
+                  </motion.a>
+                ))}
                 
                 <motion.button
                   onClick={() => navigator.share ? navigator.share({
@@ -964,31 +995,36 @@ function App() {
           }}
         >
           <span style={{ color: palette.black, fontWeight: 600, background: `${palette.cream}CC`, borderRadius: 8, padding: '0.2rem 0.7rem', boxShadow: `0 1px 6px 0 ${palette.sand}22` }}>
-            {isPro ? '🌟 Pro user: Unlimited generations!' : `Free: ${5 - usage} messages left today`}
+            Free forever. If this helps, consider a small tip.
           </span>
-          {!isPro && (
-            <motion.button
-              onClick={handleUpgrade}
-              whileHover={{ scale: 1.07, background: `linear-gradient(90deg, ${palette.purple} 0%, ${palette.sand} 100%)`, color: palette.black }}
-              whileTap={{ scale: 0.97 }}
-              style={{
-                background: `linear-gradient(90deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
-                color: palette.black,
-                fontWeight: 700,
-                border: 'none',
-                borderRadius: '0.7rem',
-                padding: '0.7rem 1.2rem',
-                fontSize: '1.05rem',
-                cursor: 'none',
-                boxShadow: `0 1.5px 6px 0 ${palette.sand}22`,
-                transition: 'background 0.2s, transform 0.1s, color 0.2s',
-                letterSpacing: '0.01em',
-                textShadow: '0 1px 6px #fff8',
-              }}
+          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {/* UPI donate if configured */}
+            {makeUpiLink(50) && (
+              <a
+                href={makeUpiLink(50, 'Tip - Client Message Generator')}
+                style={{ background: palette.purple, color: palette.white, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, boxShadow: `0 1px 6px 0 ${palette.sand}22` }}
+              >
+                ₹50 UPI Tip
+              </a>
+            )}
+            {makeUpiLink(100) && (
+              <a
+                href={makeUpiLink(100, 'Tip - Client Message Generator')}
+                style={{ background: palette.sand, color: palette.black, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, boxShadow: `0 1px 6px 0 ${palette.sand}22` }}
+              >
+                ₹100 UPI Tip
+              </a>
+            )}
+            {/* Fallback Ko-fi tip */}
+            <a
+              href="https://ko-fi.com/bluemoonsoon"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ background: palette.black, color: palette.cream, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, border: `1px solid ${palette.sage}` }}
             >
-              Upgrade to Pro (Demo)
-            </motion.button>
-          )}
+              Ko‑fi
+            </a>
+          </div>
           <span style={{ fontSize: '0.98rem', opacity: 0.8, color: palette.black, background: `${palette.cream}B0`, borderRadius: 6, padding: '0.1rem 0.5rem', fontWeight: 500 }}>
             Powered by OpenRouter, Vercel, and AI
           </span>
