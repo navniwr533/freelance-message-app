@@ -79,6 +79,37 @@ function App() {
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
 
+  // Simple template fallback when OpenRouter fails (e.g., no credit)
+  function generateOfflineFallback(project: string, intent: string, template: string): string {
+    const tone = template.toLowerCase();
+    const isApology = /sorry|apologize/.test(intent.toLowerCase());
+    const isGratitude = /thank|appreciate/.test(intent.toLowerCase());
+    const isConcise = tone.includes('concise');
+    const isFormal = tone.includes('formal');
+    
+    let greeting = isFormal ? 'Dear Client' : 'Hi';
+    let opening = '';
+    let body = '';
+    let closing = isFormal ? 'Best regards' : 'Thanks';
+    
+    if (isApology) {
+      opening = 'I apologize for any inconvenience.';
+      body = `Regarding your ${project} project, I understand your concerns and want to make this right.`;
+    } else if (isGratitude) {
+      opening = 'Thank you for considering me for your project.';
+      body = `I'm excited about the opportunity to work on ${project} and help bring your vision to life.`;
+    } else {
+      opening = 'Thank you for sharing your project details.';
+      body = `I've reviewed your ${project} requirements and I'm confident I can deliver excellent results.`;
+    }
+    
+    if (isConcise) {
+      return `${greeting}, ${opening} ${body} Let me know if you'd like to discuss further. ${closing}`;
+    }
+    
+    return `${greeting},\n\n${opening}\n\n${body} I'd be happy to discuss your specific needs and how I can help make this project successful.\n\nLooking forward to hearing from you.\n\n${closing}`;
+  }
+
   // (Removed offline fallback generator per request; focusing on real AI responses only)
 
   // Usage count for free/pro logic
@@ -329,8 +360,9 @@ function App() {
       }
 
       if (!message) {
-        if (lastError) console.warn('OpenRouter last error (no fallback):', lastError);
-        message = '❌ AI request failed. Check console for details (OpenRouter status) and ensure your API key is valid.';
+        if (lastError) console.warn('OpenRouter last error, using fallback:', lastError);
+        // Simple template-based fallback for when OpenRouter fails (e.g., no credit)
+        message = generateOfflineFallback(project, intent, template);
       }
       setOutput(cleanMessage(message));
       // Save to history
