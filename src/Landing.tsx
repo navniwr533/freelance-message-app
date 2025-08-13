@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 
 const palette = {
   sand: '#D6A99D',
@@ -13,8 +14,22 @@ const palette = {
 type Props = { onStart: () => void };
 
 export default function Landing({ onStart }: Props) {
+  // Simple parallax on mouse
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const onMove = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.width / 2) / r.width;
+      const y = (e.clientY - r.height / 2) / r.height;
+      el.style.setProperty('--px', String(x));
+      el.style.setProperty('--py', String(y));
+    };
+    window.addEventListener('mousemove', onMove, { passive: true });
+    return () => window.removeEventListener('mousemove', onMove);
+  }, []);
   return (
-    <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+    <section ref={ref} style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
       {/* subtle gradient bg */}
       <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(80% 60% at 70% 20%, ${palette.sand}33 0%, transparent 60%), radial-gradient(60% 50% at 20% 80%, ${palette.purple}22 0%, transparent 70%)` }} />
 
@@ -29,8 +44,8 @@ export default function Landing({ onStart }: Props) {
       </div>
 
       {/* headline */}
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} style={{ textAlign: 'center', padding: '0 1.2rem', zIndex: 1 }}>
-        <div style={{ fontFamily: 'Poppins, Inter, Arial, sans-serif', fontWeight: 800, color: palette.cream, fontSize: 'clamp(2.2rem, 6vw, 5rem)', lineHeight: 1, textShadow: `0 4px 24px ${palette.black}` }}>
+      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.1 }} style={{ textAlign: 'center', padding: '0 1.2rem', zIndex: 1, transform: 'translate3d(calc(var(--px,0) * 8px), calc(var(--py,0) * 8px), 0)' }}>
+        <div className="h1" style={{ color: palette.cream, lineHeight: 1, textShadow: `0 4px 24px ${palette.black}` }}>
           Messages that win clients
         </div>
         <div style={{ marginTop: 14, color: palette.mint, fontSize: 'clamp(1rem, 2.4vw, 1.25rem)', opacity: 0.9 }}>
