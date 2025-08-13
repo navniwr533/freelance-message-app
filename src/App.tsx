@@ -3,6 +3,9 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 import Landing from './Landing';
+import Capabilities from './Capabilities';
+import Showcase from './Showcase';
+import Footer from './Footer';
 
 function App() {
   // ...existing code (all hooks, functions, etc.)...
@@ -400,11 +403,13 @@ function App() {
     <>
   {/* Landing hero */}
   <Landing onStart={handleStart} />
+  {/* Showcase section */}
+  <Showcase />
   {/* Anchor for smooth scroll into app */}
   <div id="app-root" style={{ position: 'relative' }} />
       {/* Click spark effect removed for speed */}
 
-      {/* Custom global cursor */}
+  {/* Custom global cursor */}
       <motion.div
         style={{
           position: 'fixed',
@@ -1029,14 +1034,17 @@ function App() {
             Powered by OpenRouter, Vercel, and AI
           </span>
         </motion.div>
-      </motion.div>
+  </motion.div>
+  {/* Studio-style sections */}
+  <Capabilities />
+  <Footer />
       {/* Hide text cursor (I-beam) on all input fields */}
       <style>{`
         input, input:focus, input:hover, textarea, textarea:focus, textarea:hover {
           cursor: none !important;
         }
       `}</style>
-    </>
+  </>
   );
 }
 
