@@ -2,18 +2,98 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Freelance Message Generator — Navni</title>
-  <meta name="description" content="Craft clear, client-winning messages in seconds. Studio-grade UX, free to use." />
-  <meta name="theme-color" content="#7c3aed" />
-  <meta property="og:title" content="Freelance Message Generator — Navni" />
-  <meta property="og:description" content="Craft clear, client-winning messages in seconds. Studio-grade UX, free to use." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://freelance-message-app.vercel.app" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- SEO Fundamentals -->
+    <title>Freelance Message Generator — AI-Powered Client Communication Tool | IFOXY Studios</title>
+    <meta name="description" content="Generate professional freelance messages instantly with AI. Perfect pricing negotiations, timeline extensions, and client communications. Free tool by IFOXY Studios." />
+    <meta name="keywords" content="freelance, message generator, AI communication, client messages, pricing negotiation, freelancer tools, professional communication" />
+    <meta name="author" content="Navni - IFOXY Studios" />
+    <meta name="robots" content="index, follow" />
+    
+    <!-- Theme and Icons -->
+    <meta name="theme-color" content="#8B6F4E" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="canonical" href="https://freelance-message-app.vercel.app/" />
+    
+    <!-- Preconnects for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://freelance-message-app.vercel.app" />
+    <meta property="og:title" content="Freelance Message Generator — AI-Powered Client Communication Tool" />
+    <meta property="og:description" content="Generate professional freelance messages instantly with AI. Perfect pricing negotiations, timeline extensions, and client communications." />
+    <meta property="og:image" content="https://freelance-message-app.vercel.app/og-image-1200x630.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="IFOXY Studios" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://freelance-message-app.vercel.app" />
+    <meta name="twitter:title" content="Freelance Message Generator — AI-Powered Client Communication Tool" />
+    <meta name="twitter:description" content="Generate professional freelance messages instantly with AI. Perfect pricing negotiations, timeline extensions, and client communications." />
+    <meta name="twitter:image" content="https://freelance-message-app.vercel.app/og-image-1200x630.png" />
   </head>
   <body>
+  <a href="#work" style="position:absolute;left:-999px;top:auto;width:1px;height:1px;overflow:hidden;">Skip to content</a>
     <div id="root"></div>
+    <!-- Optional analytics: set VITE_PLAUSIBLE_DOMAIN to enable -->
+    <script type="module">
+      const d = import.meta.env?.VITE_PLAUSIBLE_DOMAIN;
+      if (d) {
+        const s = document.createElement('script');
+        s.defer = true;
+        s.setAttribute('data-domain', d);
+        s.src = 'https://plausible.io/js/script.js';
+        document.head.appendChild(s);
+      }
+    </script>
+    <!-- Optional: Vercel Analytics, set VITE_VERCEL_ANALYTICS=true -->
+    <script type="module">
+      const v = import.meta.env?.VITE_VERCEL_ANALYTICS;
+      if (v === 'true') {
+        const s = document.createElement('script');
+        s.defer = true;
+        s.src = '/_vercel/insights/script.js';
+        document.head.appendChild(s);
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Freelance Message Generator",
+        "description": "AI-powered tool for generating professional freelance client messages, pricing negotiations, and communication templates.",
+        "url": "https://freelance-message-app.vercel.app/",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Navni",
+          "worksFor": {
+            "@type": "Organization",
+            "name": "IFOXY Studios"
+          }
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "IFOXY Studios",
+          "url": "https://freelance-message-app.vercel.app/"
+        },
+        "keywords": "freelance, message generator, AI communication, client messages, pricing negotiation, freelancer tools",
+        "isAccessibleForFree": true
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

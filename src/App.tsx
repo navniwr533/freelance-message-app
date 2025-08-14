@@ -8,17 +8,34 @@ import Showcase from './Showcase';
 import Footer from './Footer';
 import Contact from './Contact';
 import Nav from './Nav';
+import Services from './Services';
+import Testimonials from './Testimonials';
+import Logos from './Logos';
 
 function App() {
+  // Global loading state for IFOXY STUDIOS intro animation
+  const [isIntroComplete, setIsIntroComplete] = useState(false);
+  
+  // Complete intro after IFOXY STUDIOS animation - faster and smoother
+  React.useEffect(() => {
+    const timer = setTimeout(() => setIsIntroComplete(true), 2400); // Reduced to 2.4 seconds
+    return () => clearTimeout(timer);
+  }, []);
+
   // ...existing code (all hooks, functions, etc.)...
+  React.useEffect(() => {
+    console.log('OpenRouter API Key:', (import.meta as any).env.VITE_OPENROUTER_API_KEY);
+  }, []);
+
   // Place the return statement here:
   const palette = {
-    sand: '#D6A99D',
-    cream: '#FBF3D5',
-    mint: '#D6DAC8',
-    sage: '#9CAFAA',
-    black: '#18181b',
-    purple: '#7c3aed',
+    // Warm, light theme aligned with reference site
+    sand: '#CBB59C',   // accent
+    cream: '#FFF9F0',  // light surface
+    mint: '#E9E1D8',   // soft ui
+    sage: '#B9AFA5',   // warm grey
+    black: '#141414',  // ink
+    purple: '#8B6F4E', // brand (bronze)
     white: '#fff',
   };
 
@@ -42,8 +59,16 @@ function App() {
   const [project, setProject] = useState('');
   const [intent, setIntent] = useState('');
   const [output, setOutput] = useState('Your message will appear here...');
+  const [origin, setOrigin] = useState<'ai' | 'fallback'>('ai');
+  const [genError, setGenError] = useState<string | null>(null);
+  const [hasApiKey] = useState<boolean>(() => !!(import.meta as any).env?.VITE_OPENROUTER_API_KEY);
+  // Expose OpenRouter API key
+  // const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
+  // Input focus state for hint logic
+  const [projectFocused, setProjectFocused] = useState(false);
+  const [intentFocused, setIntentFocused] = useState(false);
   // Message history
-  const [history, setHistory] = useState(() => {
+  const [history] = useState(() => {
     const saved = localStorage.getItem('messageHistory');
     return saved ? JSON.parse(saved) : [];
   });
@@ -62,24 +87,80 @@ function App() {
   const [showHistory, setShowHistory] = useState(false);
   // For global custom cursor (zero latency, follows mouse exactly)
   const [cursorPos, setCursorPos] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const [hasPointer, setHasPointer] = useState(false);
+
+  // Check if device has fine pointer (mouse/trackpad) vs coarse pointer (touch)
+  React.useEffect(() => {
+    const checkPointer = () => {
+      setHasPointer(window.matchMedia('(pointer: fine)').matches);
+    };
+    checkPointer();
+    
+    // Listen for changes (rare but possible)
+    const media = window.matchMedia('(pointer: fine)');
+    media.addEventListener('change', checkPointer);
+    return () => media.removeEventListener('change', checkPointer);
+  }, []);
 
   // (Click spark effect removed for speed)
-  const [cursorType, setCursorType] = useState<'default' | 'theory' | 'card'>('default');
+  // Removed cursorType variations; single neutral cursor used for clarity
 
-  // Track mouse globally, update instantly (no smoothing)
+  // Track mouse globally, update instantly (optimized for smooth performance)
   React.useEffect(() => {
+    if (!hasPointer) return; // Don't track on touch devices
+    
     const move = (e: MouseEvent) => {
+      // Direct update without requestAnimationFrame for zero-lag cursor
       setCursorPos({ x: e.clientX, y: e.clientY });
     };
     window.addEventListener('mousemove', move, { passive: true });
-    return () => window.removeEventListener('mousemove', move);
-  }, []);
+    return () => {
+      window.removeEventListener('mousemove', move);
+    };
+  }, [hasPointer]);
 
-  // Hide system cursor
+  // Hide system cursor only on pointer devices
   React.useEffect(() => {
-    document.body.style.cursor = 'none';
-    return () => { document.body.style.cursor = ''; };
-  }, []);
+    if (hasPointer) {
+      document.body.style.cursor = 'none';
+      return () => { document.body.style.cursor = ''; };
+    }
+  }, [hasPointer]);
+
+  // Typewriter placeholder utility
+  function useTypewriter(lines: string[], enabled: boolean) {
+    const [text, setText] = useState('');
+    React.useEffect(() => {
+      let i = 0, pos = 0, dir: 1 | -1 = 1;
+      let t: any;
+      let mounted = true;
+      const tick = () => {
+        if (!mounted || !enabled) { setText(''); return; }
+        const full = lines[i];
+        if (dir > 0) {
+          if (pos < full.length) { pos++; setText(full.slice(0, pos) + '_'); t = setTimeout(tick, 60); }
+          else { t = setTimeout(() => { dir = -1; tick(); }, 900); }
+        } else {
+          if (pos > 0) { pos--; setText(full.slice(0, pos) + '_'); t = setTimeout(tick, 35); }
+          else { dir = 1; i = (i + 1) % lines.length; t = setTimeout(tick, 300); }
+        }
+      };
+      if (enabled) tick();
+      return () => { mounted = false; clearTimeout(t); };
+    }, [enabled, lines.join('|')]);
+    return text;
+  }
+
+  const projectHint = useTypewriter([
+    "Client needs a Shopify store for handmade jewelry",
+    "Landing page for a local fitness studio",
+    "iOS app to track study habits",
+  ], !project && !projectFocused);
+  const intentHint = useTypewriter([
+    "Propose a higher budget with clear value",
+    "Request a 1-week timeline extension",
+    "Ask only about their usage and constraints",
+  ], !intent && !intentFocused);
 
   // Minimal cleanup: preserve content, format basic markup
   function cleanMessage(text: string) {
@@ -91,35 +172,70 @@ function App() {
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
 
-  // Simple template fallback when OpenRouter fails (e.g., no credit)
+  // Smart fallback when AI APIs fail - uses intent classification
   function generateOfflineFallback(project: string, intent: string, template: string): string {
+    const lcIntent = intent.toLowerCase();
+    const lcProject = project.toLowerCase();
     const tone = template.toLowerCase();
-    const isApology = /sorry|apologize/.test(intent.toLowerCase());
-    const isGratitude = /thank|appreciate/.test(intent.toLowerCase());
+  // Detect if the so-called project field is actually a situation / complaint / emotional context
+  const hasBuildKeywords = /project|website|web\s*site|app|application|landing|store|shopify|wordpress|react|nextjs|vue|platform|dashboard|logo|design|ui|feature|integration|api|software|system|landing\s*page|app\s*idea/.test(lcProject);
+  const situationPattern = /client\s+wants|client\s+asked|client\s+is|weird|unusual|strange|inappropriate|creepy|angry|frustrated|annoyed|upset|uncomfortable|pressure|pressuring|rude|boundary|unethical|scam|refuse|refusing|demand(?:s|ed)?|issue|problem|complain|complaint|threat/;
+  const emotionalPattern = /i feel|i'm\s+(angry|upset|scared|worried|anxious|uncomfortable)|this\s+feels|makes\s+me\s+feel/;
+  const intentLower = lcIntent; // reuse existing lcIntent from outer scope when fallback called
+  const hasSituationKeywords = situationPattern.test(lcProject) || situationPattern.test(intentLower);
+  const hasEmotionKeywords = emotionalPattern.test(lcProject) || emotionalPattern.test(intentLower);
+  const isInappropriateRequest = /head massage|manicure|massage|personal favor|dating|romantic|physical (?:contact|touch)|send (?:photos|picture)|video call (?:late|private)|unpaid (?:extra|work)|free (?:work|trial)/.test(lcProject + ' ' + intentLower);
+  const isSituationContext = (!hasBuildKeywords && (hasSituationKeywords || hasEmotionKeywords)) || isInappropriateRequest;
+    
+    // Intent classification
+    const isPrice = /price|budget|rate|increase|raise|adjust|cost|fee|charge|expensive|cheap|more money|higher|lower|settle/.test(lcIntent);
+    const isSkill = /proficient|experienced|skilled|specialize|expert|good at|better at|android|ios|react|vue|python|java/.test(lcIntent);
+    const isApology = /sorry|apologize|regret|unfortunately|mistake|error/.test(lcIntent);
+    const isGratitude = /thank|appreciate|grateful/.test(lcIntent);
     const isConcise = tone.includes('concise');
     const isFormal = tone.includes('formal');
+    const isFriendly = tone.includes('friendly');
     
-    let greeting = isFormal ? 'Dear Client' : 'Hi';
-    let opening = '';
-    let body = '';
-    let closing = isFormal ? 'Best regards' : 'Thanks';
+    let greeting = isFormal ? 'Dear Client,' : isFriendly ? 'Hi there!' : 'Hi,';
+    let message = '';
     
-    if (isApology) {
-      opening = 'I apologize for any inconvenience.';
-      body = `Regarding your ${project} project, I understand your concerns and want to make this right.`;
+    if (isPrice) {
+      if (isConcise) {
+        message = `${greeting} After reviewing your ${project} requirements, I'd like to discuss a revised budget of $X to ensure premium quality delivery. Can we schedule a brief call?`;
+      } else {
+        message = `${greeting}\n\nThank you for sharing your ${project} project details. After careful consideration of the scope and requirements, I believe this project warrants a higher investment to deliver the quality results you deserve.\n\nI'd like to propose a budget adjustment to $X, which would allow me to:\n- Dedicate proper time to research and planning\n- Implement best practices and thorough testing\n- Provide ongoing support and revisions\n\nWould you be open to discussing this further? I'm confident the value will exceed your expectations.`;
+      }
+    } else if (isSkill) {
+      if (lcIntent.includes('android') && lcProject.includes('ios')) {
+        message = `${greeting}\n\nI appreciate you considering me for your iOS app project. While my expertise is primarily in Android development, I want to be transparent about this mismatch.\n\nI can offer a few options:\n- Partner with an iOS specialist I trust for the best results\n- Explore a cross-platform solution using React Native or Flutter\n- Refer you to a qualified iOS developer in my network\n\nWhat approach would work best for your timeline and goals?`;
+      } else {
+        message = `${greeting}\n\nThank you for the project details. I want to be upfront - my core expertise doesn't fully align with your technical requirements for ${project}.\n\nI believe in delivering excellence, so I'd recommend either:\n- Collaborating with a specialist in this area\n- Exploring alternative technical approaches that leverage my strengths\n\nWould you like me to suggest some qualified professionals who would be a perfect fit?`;
+      }
+    } else if (isApology) {
+      message = `${greeting}\n\nI sincerely apologize for the inconvenience regarding your ${project} project. I take full responsibility and want to make this right immediately.\n\nHere's how I plan to resolve this:\n- [Specific corrective action based on the issue]\n- Additional quality checks to prevent future occurrences\n- Priority treatment for any revisions needed\n\nI value our working relationship and am committed to exceeding your expectations moving forward.`;
     } else if (isGratitude) {
-      opening = 'Thank you for considering me for your project.';
-      body = `I'm excited about the opportunity to work on ${project} and help bring your vision to life.`;
+      message = `${greeting}\n\nThank you so much for considering me for your ${project} project! I'm genuinely excited about the opportunity to bring your vision to life.\n\nYour project aligns perfectly with my expertise, and I'm already envisioning some creative approaches that could add real value. I appreciate your trust in my abilities and look forward to collaborating with you.\n\nShall we schedule a quick call to discuss the next steps?`;
     } else {
-      opening = 'Thank you for sharing your project details.';
-      body = `I've reviewed your ${project} requirements and I'm confident I can deliver excellent results.`;
+      // Situation / complaint / emotional context handling (don't call it a "project")
+      if (isSituationContext) {
+        if (isInappropriateRequest) {
+          message = `${greeting}\n\nI need to stay within professional boundaries, so I won't be able to accommodate that personal request. I'm happy to continue with the agreed work and keep things focused on the deliverables. If you have any updates related to the actual work, send them over and I'll prioritize them.`;
+        } else if (isApology) {
+          message = `${greeting}\n\nI understand there's frustration around this. I take the concern seriously and want to move us forward constructively. Here's what I'll do next:\n- Clarify what’s been completed so far\n- Identify any gap or misunderstanding\n- Provide a concrete adjustment or timeline if needed\n\nLet me know if that plan works or if you'd like a different approach.`;
+        } else {
+          message = `${greeting}\n\nThanks for outlining the situation. Here's a professional reply you can send:\n\n"I appreciate your message. To keep things productive, I'd like to stay focused on the agreed scope. That request doesn’t fall under my role, so I’ll have to decline it. If there’s anything specific you need related to the work, let me know and I’ll address it promptly."\n\nLet me know if you want a softer or firmer tone and I can adjust.`;
+        }
+      } else {
+        // General project response
+        if (isConcise) {
+          message = `${greeting} Thanks for the ${project} details. I understand your requirements and I'm ready to help. Let's discuss the next steps - are you available for a brief call this week?`;
+        } else {
+          message = `${greeting}\n\nThank you for sharing the details about your ${project} project. I've reviewed your requirements and I'm confident I can deliver exactly what you're looking for.\n\nBased on what you've described, I can help you achieve your goals effectively. I'd love to discuss your specific preferences and timeline to ensure we're perfectly aligned.\n\nWhat would be the best way to move forward? I'm available for a call this week to dive deeper into the details.`;
+        }
+      }
     }
     
-    if (isConcise) {
-      return `${greeting}, ${opening} ${body} Let me know if you'd like to discuss further. ${closing}`;
-    }
-    
-    return `${greeting},\n\n${opening}\n\n${body} I'd be happy to discuss your specific needs and how I can help make this project successful.\n\nLooking forward to hearing from you.\n\n${closing}`;
+    return message;
   }
 
   // (Removed offline fallback generator per request; focusing on real AI responses only)
@@ -145,318 +261,229 @@ function App() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setOutput('<span style="color:' + palette.sand + '">⏳ Generating message...</span>');
-    setCopied(false);
-  // No paywall: unlimited generations
-    try {
-  // ULTRA SIMPLE prompt that even dumb AI can follow
-      let systemPrompt = "";
-      let userPrompt = "";
-      
-      // Classify intent and build targeted prompts so output matches the freelancer's goal
-      const lcIntent = (intent || '').toLowerCase();
-      const isCancel = /cancel|not\s*proceed|withdraw|decline|can't\s*continue|unable\s*to\s*continue/.test(lcIntent);
-      const isPrice = /price|budget|rate|increase|raise|adjust/.test(lcIntent);
-      const isTimeline = /deadline|timeline|delay|postpone|extend/.test(lcIntent);
-      const isApology = /sorry|apologize|regret|unfortunately/.test(lcIntent);
-      const isGratitude = /thank|appreciate|gratitude/.test(lcIntent);
-      const isImprove = /improve|enhance|upgrade|better|add\s*value|next\s*level/.test(lcIntent);
-      const isPersonal = /about\s*(you|her|him|son|daughter|child|kid)|your\s*(background|profile|experience)|personal\s*details|who\s*you\s*are|more\s*about\s*(you|him|her|son|daughter|child|kid)|only\s*(about|regarding)\s*(you|him|her|son|daughter|child|kid)/.test(lcIntent);
-
-      // Detect family/person focus for personal-only cases
-      let personFocus = 'the client';
-      if (isPersonal) {
-        if (/son/.test(lcIntent)) personFocus = "their son";
-        else if (/daughter/.test(lcIntent)) personFocus = "their daughter";
-        else if (/(child|kid)/.test(lcIntent)) personFocus = "their child";
-        else if (/(her|him)\s+only|only\s+about\s*(her|him)/.test(lcIntent)) personFocus = 'the client';
-      }
-
-      // Extract freelancer name if provided, e.g., "my name is navni"
-      const nameMatch = /my name is\s+([\w .'-]{1,40})/i.exec(intent || '');
-      const freelancerName = nameMatch ? nameMatch[1].trim() : '';
-
-      // Tone handling
-      const tone = (template || '').toLowerCase();
-      const toneHint = tone.includes('concise')
-        ? 'Keep it to 1-2 sentences, no lists.'
-        : tone.includes('formal')
-        ? 'Use a professional, measured tone. Prefer short paragraphs over lists.'
-        : tone.includes('friendly')
-        ? 'Sound warm and approachable. Prefer a short paragraph; avoid bullets unless truly needed.'
-        : tone.includes('apology')
-        ? 'Include a polite, brief apology.'
-        : tone.includes('gratitude')
-        ? 'Express brief, genuine appreciation.'
-        : 'Short paragraph, natural tone, avoid bullets unless necessary.';
-
-      // Goal based on intent
-      let goal = '';
-      if (isCancel) goal = 'Politely decline proceeding with the project.';
-      else if (isPrice) goal = 'Discuss pricing transparently and propose a call or range if appropriate.';
-      else if (isTimeline) goal = 'Request a reasonable timeline extension and confirm constraints.';
-      else if (isApology) goal = 'Deliver a brief apology and restate your intended action.';
-      else if (isGratitude) goal = 'Thank them and express enthusiasm to collaborate.';
-      else if (isImprove) goal = 'Propose a higher-value approach without sounding pushy.';
-  else if (isPersonal) goal = `Ask only about ${personFocus} (not features). Useful aspects: role in decisions, preferred communication, availability/time zone, and any accessibility or usage considerations.`;
-      else goal = 'Respond helpfully to their request and ask only the minimal, relevant follow-ups.';
-
-      // Guardrails
-      const rules = [
-        'Treat the first input as the client request and the second as the freelancer intent.',
-        "Do not restate the client's text verbatim; paraphrase naturally.",
-  'Avoid assumptions and avoid generic checklists.',
-  isPersonal ? `Do NOT ask about app features, budget, or tech; ask only about ${personFocus}.` : 'Ask only questions aligned with the stated intent.',
-  'Do not invent or guess any names. No placeholders like [Client\'s Name] or [Your Name].',
-  freelancerName ? `You may sign off with "${freelancerName}" (first name only). Do not introduce yourself in the opening.` : 'Do not include your own name in the message.',
-  'Do not address the client by name unless an explicit client name is provided in inputs.',
-        toneHint,
-      ].join(' ');
-
-      systemPrompt = `You write short, professional client messages. ${rules}`;
-
-      // Compose user prompt with explicit goal and context
-      userPrompt = [
-        `Client request/context: ${project}`,
-        `Freelancer intent/goal: ${intent}`,
-        freelancerName ? `Freelancer name to optionally sign with: ${freelancerName}` : 'No freelancer name provided; do not include one.',
-        isPersonal ? `Person to focus on: ${personFocus}` : 'Not a personal-only request.',
-        `Your objective: ${goal}`,
-        'Output only the final message to the client (one short paragraph).',
-      ].join('\n');
-      
-      console.log('=== DEBUG PROMPTS ===');
-      console.log('System Prompt:', systemPrompt);
-      console.log('User Prompt:', userPrompt);
-      console.log('===================');
-
-  const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL ?? '';
-  const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
-
-      // Faster, world-class routing: per-tone model priority + parallel race with timeouts
-      const toneKey = (template || '').toLowerCase();
-      const getOrderedModels = () => {
-        // Base pool
-        const base = [
-          'deepseek/deepseek-chat-v3-0324:free',
-          'meta-llama/llama-3.1-8b-instruct:free',
-          'google/gemma-2-9b-it:free',
-          'mistralai/mistral-7b-instruct:free',
-          'qwen/qwen-2.5-7b-instruct:free',
-        ];
-        if (toneKey.includes('formal') || toneKey.includes('concise')) {
-          return [
-            'meta-llama/llama-3.1-8b-instruct:free',
-            'google/gemma-2-9b-it:free',
-            'deepseek/deepseek-chat-v3-0324:free',
-            'mistralai/mistral-7b-instruct:free',
-            'qwen/qwen-2.5-7b-instruct:free',
-          ];
-        }
-        if (toneKey.includes('apology') || toneKey.includes('gratitude')) {
-          return [
-            'meta-llama/llama-3.1-8b-instruct:free',
-            'deepseek/deepseek-chat-v3-0324:free',
-            'google/gemma-2-9b-it:free',
-            'mistralai/mistral-7b-instruct:free',
-            'qwen/qwen-2.5-7b-instruct:free',
-          ];
-        }
-        // Friendly/default
-        return base;
-      };
-
-      const getToneSettings = () => {
-        if (toneKey.includes('concise')) return { temperature: 0.25, maxTokens: 120 };
-        if (toneKey.includes('formal')) return { temperature: 0.3, maxTokens: 160 };
-        if (toneKey.includes('apology') || toneKey.includes('gratitude')) return { temperature: 0.35, maxTokens: 160 };
-        if (toneKey.includes('friendly')) return { temperature: 0.5, maxTokens: 180 };
-        return { temperature: 0.4, maxTokens: 180 };
-      };
-
-      const orderedModels = getOrderedModels();
-      const { temperature, maxTokens } = getToneSettings();
-
-      const callModelDirect = (model: string, signal: AbortSignal) =>
-        fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${OPENROUTER_KEY}`,
-            'HTTP-Referer': window.location.origin,
-            'X-Title': 'Client Message Generator',
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            max_tokens: maxTokens,
-            temperature,
-            top_p: 0.9,
-          }),
-          signal,
-        })
-          .then(async (res) => {
-            if (!res.ok) {
-              const errText = await res.text();
-              throw new Error(`HTTP ${res.status} ${res.statusText}: ${errText}`);
-            }
-            const data = await res.json();
-            const content = data?.choices?.[0]?.message?.content;
-            if (!content) throw new Error('No content in choices');
-            return content as string;
-          });
-
-      // Server-side path: call our API/generate once; no need to race models client-side.
-      const callServer = async (): Promise<string> => {
-        const res = await fetch(`${API_BASE}/api/generate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            project_description: project,
-            message_purpose: intent,
-            // Let server choose model; keep for compatibility
-            model: orderedModels[0],
-          }),
-        });
-        if (!res.ok) {
-          const t = await res.text();
-          throw new Error(`Server API error: ${res.status} ${t}`);
-        }
-        const data = await res.json();
-        const content = data?.message;
-        if (!content) throw new Error('No message in response');
-        return content as string;
-      };
-
-  const raceBatch = async (models: string[], timeoutMs = 12000) => {
-        const controllers = models.map(() => new AbortController());
-        const timers: any[] = [];
-        try {
-          const promises = models.map((m, i) => {
-            const controller = controllers[i];
-            timers[i] = setTimeout(() => controller.abort(), timeoutMs);
-    return callModelDirect(m, controller.signal);
-          });
-          const result = await Promise.any(promises);
-          return result as string;
-        } finally {
-          controllers.forEach((c) => c.abort());
-          timers.forEach((t) => clearTimeout(t));
-        }
-      };
-
-  let message: string | null = null;
-  let lastError: any = null;
-  // Prefer calling our serverless API (relative path works on Vercel). If that fails and a BYOK exists, fall back to direct OpenRouter.
-  if (true) {
-        try {
-          message = await callServer();
-        } catch (e) {
-          lastError = e;
-          console.warn('Server generate failed', e);
-        }
-  }
-  if (!message && OPENROUTER_KEY) {
-        // Race in small batches for speed and lower rate-limits impact (direct OpenRouter)
-        for (let i = 0; i < orderedModels.length && !message; i += 2) {
-          const batch = orderedModels.slice(i, i + 2);
-          try {
-            const result = await raceBatch(batch);
-            if (result) message = result;
-          } catch (e) {
-            lastError = e;
-            console.warn('Batch failed', batch, e);
-          }
-        }
-      }
-
-  if (!message) {
-        if (lastError) console.warn('OpenRouter last error, using fallback:', lastError);
-        // Simple template-based fallback for when OpenRouter fails (e.g., no credit)
-        message = generateOfflineFallback(project, intent, template);
-      }
-      setOutput(cleanMessage(message));
-      // Save to history
-      const newHistory = [
-        {
-          project,
-          intent,
-          template,
-          message: cleanMessage(message),
-          date: new Date().toISOString(),
-        },
-        ...history.slice(0, 19), // keep last 20
+    setGenError(null);
+    
+    // Get API key
+    const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
+    
+    // Model selection based on tone
+    const getOrderedModels = () => {
+      const base = [
+        'deepseek/deepseek-chat-v3-0324:free',
+        'meta-llama/llama-3.1-8b-instruct:free',
+        'google/gemma-2-9b-it:free',
+        'mistralai/mistral-7b-instruct:free',
+        'qwen/qwen-2.5-7b-instruct:free',
       ];
-      setHistory(newHistory);
-      localStorage.setItem('messageHistory', JSON.stringify(newHistory));
-    // Usage counting disabled in free mode
-    } catch (err) {
-      setOutput('<span style="color:#f87171;">❌ Failed to generate message. Check console.</span>');
+      return base;
+    };
+    
+    // Prompt setup
+    const systemPrompt = `You are an expert freelance messaging assistant.
+
+CRITICAL INSTRUCTIONS:
+- Do not include salutations like "Dear Client," at the beginning or closing sign-offs like "Regards," or "Sincerely," at the end.
+- Read the CLIENT CONTEXT and FREELANCER INTENT carefully.
+- Write a response that directly addresses the freelancer's specific goal.
+- Always analyze both the CLIENT CONTEXT and FREELANCER INTENT before crafting your response; integrate insights from both fields.
+- Do not describe your writing process or provide tips; only output the complete, ready-to-send message.
+- Use **bold** to highlight key points or important statements.
+- Use bullet points when they improve clarity (max 4 points with "- " prefix).
+- Use numbered lists for sequential or step-by-step instructions (use "1. " prefix).
+
+RESPONSE FORMATS:
+- Single paragraph for simple responses.
+- Multiple paragraphs for complex situations.
+- Mix formats when it enhances clarity.`;
+
+    const userPrompt = `CLIENT CONTEXT: ${project}
+FREELANCER INTENT: ${intent}`;
+
+    try {
+      if (!OPENROUTER_KEY) throw new Error('Missing OpenRouter API key');
+      
+      // Direct fetch to OpenRouter primary model
+      const model = getOrderedModels()[0];
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_KEY}`,
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'Client Message Generator',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          max_tokens: 350,
+          temperature: 0.8,
+          top_p: 0.9,
+        }),
+      });
+      
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`OpenRouter ${res.status}: ${errText.slice(0,160)}`);
+      }
+      
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) throw new Error('No AI content returned');
+      
+      setOrigin('ai');
+      setOutput(cleanMessage(content));
+      try { (window as any).plausible?.('Generate Success'); } catch {}
+      
+    } catch (err: any) {
+      console.error('AI generation error', err);
+      // Fallback if AI fails or key missing
+      const fallback = generateOfflineFallback(project, intent, template);
+      setOrigin('fallback');
+      setGenError(err.message);
+      setOutput(cleanMessage(fallback));
+      try { (window as any).plausible?.('Generate Failure'); } catch {}
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   // Upgrade disabled (free forever)
 
   return (
     <>
-      <Nav />
-  {/* Landing hero */}
-  <Landing onStart={handleStart} />
-  {/* Showcase section */}
-  <Showcase />
-  {/* Anchor for smooth scroll into app */}
-  <div id="app-root" style={{ position: 'relative' }} />
-      {/* Click spark effect removed for speed */}
+      {/* Custom global cursor - ALWAYS on top */}
+      {hasPointer && (
+        <div
+            style={{
+              position: 'fixed',
+              left: cursorPos.x - 14,
+              top: cursorPos.y - 14,
+              width: 28,
+              height: 28,
+              borderRadius: '50%',
+              pointerEvents: 'none',
+              zIndex: 999999,
+              mixBlendMode: 'normal',
+              border: 'none',
+              boxSizing: 'border-box',
+              willChange: 'transform',
+              transform: 'translate3d(0, 0, 0)',
+              background: `radial-gradient(circle at 50% 50%, ${palette.cream} 0%, ${palette.sand}AA 70%, transparent 100%)`,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+              transition: 'none',
+            }}
+          />
+      )}
+      
+      {/* IFOXY STUDIOS Intro Animation */}
+      <AnimatePresence mode="wait">
+        {!isIntroComplete && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 1 }}
+            exit={{ 
+              opacity: 0,
+              scale: 1.02,
+              filter: "blur(4px)"
+            }}
+            transition={{ 
+              duration: 0.5,
+              ease: [0.16, 1, 0.3, 1]
+            }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: `linear-gradient(135deg, ${palette.cream} 0%, #F8F4EC 50%, ${palette.mint} 100%)`,
+              zIndex: 1000,
+              willChange: 'transform, opacity, filter',
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ 
+                opacity: 0, 
+                y: -10, 
+                scale: 0.98
+              }}
+              transition={{ 
+                duration: 0.8, 
+                ease: [0.16, 1, 0.3, 1],
+                delay: 0.1 
+              }}
+              style={{
+                fontSize: 'clamp(2.5rem, 8vw, 5rem)',
+                fontWeight: 800,
+                color: palette.purple,
+                letterSpacing: '-2px',
+                textAlign: 'center',
+                textShadow: `0 2px 20px ${palette.purple}20`,
+                willChange: 'transform, opacity',
+              }}
+            >
+              IFOXY STUDIOS
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-  {/* Custom global cursor */}
-      <motion.div
-        style={{
-          position: 'fixed',
-          left: cursorPos.x - 18,
-          top: cursorPos.y - 18,
-          width: 36,
-          height: 36,
-          borderRadius: '50%',
-          pointerEvents: 'none',
-          zIndex: 9999,
-          mixBlendMode: 'exclusion',
-          border: `2.5px solid ${palette.purple}`,
-          boxSizing: 'border-box',
-          willChange: 'transform, background, box-shadow',
-          background:
-            cursorType === 'theory'
-              ? `radial-gradient(circle at 50% 50%, ${palette.purple} 0%, ${palette.cream} 80%, transparent 100%)`
-              : cursorType === 'card'
-              ? `radial-gradient(circle at 50% 50%, ${palette.purple} 0%, ${palette.sand} 80%, transparent 100%)`
-              : `radial-gradient(circle at 50% 50%, ${palette.purple} 0%, ${palette.sand} 80%, transparent 100%)`,
-          boxShadow:
-            cursorType === 'theory'
-              ? `0 0 32px 8px ${palette.purple}55`
-              : cursorType === 'card'
-              ? `0 2px 24px 0 ${palette.purple}44`
-              : `0 2px 16px 0 ${palette.purple}33`,
-        }}
-      />
-      <motion.div
+      {/* Main App Content - Show after intro */}
+      <AnimatePresence mode="wait">
+        {isIntroComplete && (
+          <motion.div
+            initial={{ 
+              opacity: 0,
+              y: 8,
+              filter: "blur(6px)",
+              scale: 0.99
+            }}
+            animate={{ 
+              opacity: 1,
+              y: 0,
+              filter: "blur(0px)",
+              scale: 1
+            }}
+            transition={{ 
+              duration: 0.6, 
+              ease: [0.16, 1, 0.3, 1],
+              delay: 0.05
+            }}
+            style={{ willChange: 'transform, opacity, filter' }}
+          >
+            <Nav />
+            {/* Landing hero */}
+            <main>
+              <Landing onStart={handleStart} />
+              {/* Showcase section */}
+              <Showcase />
+              {/* Main application section */}
+              <section id="app-root" style={{ position: 'relative' }} aria-label="Freelance Message Generator Tool">
+                <h1 style={{ position: 'absolute', left: '-9999px' }}>
+                  AI-Powered Freelance Message Generator - Professional Client Communication Tool
+                </h1>
+    <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.8 }}
         style={{
           minHeight: '100vh',
-          width: '100vw',
-          overflow: 'auto',
+          width: '100%',
+      // Avoid nested scroll containers; let the document handle scroll for smoother behavior
+      overflow: 'visible',
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           fontFamily: 'Poppins, Inter, Arial, sans-serif',
-          background: `radial-gradient(ellipse 90% 70% at 60% 20%, #D6A99D 0%, #FBF3D5 40%, #D6DAC8 70%, #9CAFAA 100%), linear-gradient(120deg, #7c3aed33 0%, #18181b 100%)`,
+          background: `linear-gradient(180deg, ${palette.cream} 0%, #F5F1EA 60%, #F2ECE3 100%)`,
           boxSizing: 'border-box',
           zIndex: 0,
         }}
@@ -471,9 +498,9 @@ function App() {
             inset: 0,
             zIndex: 0,
             pointerEvents: 'none',
-            background: 'radial-gradient(circle at 70% 30%, #7c3aed66 0%, transparent 60%), radial-gradient(circle at 20% 80%, #D6A99D55 0%, transparent 70%)',
-            mixBlendMode: 'screen',
-            animation: 'moveGlow 10s ease-in-out infinite alternate',
+            background: `radial-gradient(circle at 70% 30%, ${palette.purple}22 0%, transparent 50%), radial-gradient(circle at 20% 80%, ${palette.sand}22 0%, transparent 60%)`,
+            mixBlendMode: 'multiply',
+            // animation removed to reduce jank on low-power devices
           }}
         />
         <motion.div
@@ -506,8 +533,7 @@ function App() {
             padding: '0 1.5rem',
             textAlign: 'center',
           }}
-          onMouseEnter={() => setCursorType('theory')}
-          onMouseLeave={() => setCursorType('default')}
+          
         >
           <span style={{
             fontFamily: 'Poppins, Inter, Arial, sans-serif',
@@ -515,7 +541,7 @@ function App() {
             fontSize: '2.1rem',
             color: palette.purple,
             letterSpacing: '-1.5px',
-            textShadow: '0 2px 16px #7c3aed33',
+            textShadow: `0 2px 16px ${palette.purple}33`,
             display: 'block',
             marginBottom: '0.5rem',
           }}>
@@ -525,12 +551,12 @@ function App() {
             fontFamily: 'Poppins, Inter, Arial, sans-serif',
             fontWeight: 500,
             fontSize: '1.18rem',
-            color: palette.sand,
-            textShadow: '0 1px 8px #D6A99D22',
+            color: palette.purple,
+            textShadow: `0 1px 8px ${palette.purple}33`,
             lineHeight: 1.6,
           }}>
             Instantly craft perfect, human-like messages for your freelance clients. Powered by AI, styled for 2025, and animated for pure delight. <br />
-            <span style={{ color: palette.cream, fontWeight: 600 }}>Mobile-friendly, beautiful, and always on brand.</span>
+            <span style={{ color: palette.black, fontWeight: 600 }}>Mobile-friendly, beautiful, and always on brand.</span>
           </span>
         </motion.div>
         <motion.div
@@ -539,163 +565,279 @@ function App() {
           animate={{ y: 0, opacity: 1, scale: 1 }}
           transition={{ type: 'spring', stiffness: 80, damping: 16, duration: 0.7 }}
           style={{
-            background: palette.black,
+            background: palette.cream,
             borderRadius: '1.3rem',
-            boxShadow: '0 8px 32px 0 rgba(0,0,0,0.10), 0 1.5px 8px 0 rgba(214,169,157,0.08) inset',
-            padding: '2.5rem 1.2rem 2rem 1.2rem',
+            boxShadow: '0 8px 24px 0 rgba(0,0,0,0.06)',
+            padding: 'clamp(1.5rem, 4vw, 2.5rem) clamp(1rem, 3vw, 1.2rem) clamp(1.5rem, 4vw, 2rem) clamp(1rem, 3vw, 1.2rem)',
             maxWidth: 680,
             minWidth: 320,
-            width: '100%',
-            margin: '2rem 0',
+            width: 'calc(100% - 2rem)',
+            margin: 'clamp(1rem, 3vw, 2rem) 1rem',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            border: `2px solid ${palette.sand}`,
+            border: `1.5px solid ${palette.sand}`,
             position: 'relative',
             boxSizing: 'border-box',
             zIndex: 3,
             overflow: 'visible',
-            cursor: 'none',
+            cursor: hasPointer ? 'none' : 'auto',
           }}
           onMouseMove={e => {
             if (!cardRef.current) return;
             const rect = cardRef.current.getBoundingClientRect();
-            setCursor({
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top,
-              active: true,
-            });
+            const newX = e.clientX - rect.left;
+            const newY = e.clientY - rect.top;
+            // Only update if position changed significantly (reduces jank)
+            if (Math.abs(newX - cursor.x) > 2 || Math.abs(newY - cursor.y) > 2) {
+              setCursor({
+                x: newX,
+                y: newY,
+                active: true,
+              });
+            }
           }}
+          onMouseEnter={() => setCursor(c => ({ ...c, active: true }))}
           onMouseLeave={() => setCursor(c => ({ ...c, active: false }))}
-          onMouseEnter={() => setCursorType('card')}
-          onMouseOut={() => setCursorType('default')}
+          
         >
           {/* Cursor-following animated gradient overlay */}
           {cursor.active && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.7, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.25, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               style={{
                 pointerEvents: 'none',
                 position: 'absolute',
-                left: cursor.x - 120,
-                top: cursor.y - 120,
-                width: 240,
-                height: 240,
+                left: cursor.x - 60,
+                top: cursor.y - 60,
+                width: 120,
+                height: 120,
                 borderRadius: '50%',
-                background: 'radial-gradient(circle, #7c3aed88 0%, #D6A99D33 60%, transparent 100%)',
-                filter: 'blur(12px)',
+                background: `radial-gradient(circle, ${palette.purple}33 0%, ${palette.sand}15 70%, transparent 100%)`,
+                filter: 'blur(4px)',
                 zIndex: 10,
-                opacity: 0.7,
-                transition: 'opacity 0.2s',
+                willChange: 'transform, opacity',
               }}
             />
           )}
           <motion.h2
-            initial={{ opacity: 0, y: -30 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.7, type: 'spring', stiffness: 60 }}
+            transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             style={{
               marginBottom: '1.2rem',
               fontWeight: 600,
               fontSize: '2rem',
               letterSpacing: '-1px',
-              color: palette.sand,
+              color: palette.purple,
               textAlign: 'center',
               fontFamily: 'Poppins, Inter, Arial, sans-serif',
+              willChange: 'transform, opacity',
             }}
           >
             Client Message Generator
           </motion.h2>
           <motion.form
-            style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', cursor: 'none' }}
+            style={{ 
+              width: '100%', 
+              maxWidth: '600px',
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '1rem', 
+              cursor: hasPointer ? 'none' : 'auto',
+              padding: '0 1rem'
+            }}
             onSubmit={handleSubmit}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.7, type: 'spring', stiffness: 60 }}
           >
-            <div style={{ cursor: 'none' }}>
+            <div style={{ cursor: hasPointer ? 'none' : 'auto' }}>
+              <label htmlFor="project" style={{ color: palette.black, fontWeight: 600, fontSize: '0.95rem', fontFamily: 'Poppins, Inter, Arial, sans-serif', display: 'block', marginBottom: '0.35rem' }}>
+                Project summary
+              </label>
               <motion.input
+                id="project"
+                name="project"
                 type="text"
-                placeholder="e.g., 'ecommerce website for handmade jewelry', 'mobile app for fitness tracking'"
+                placeholder={project ? '' : projectHint}
                 value={project}
                 onChange={e => setProject(e.target.value)}
+                onFocus={(e) => {
+                  setProjectFocused(true);
+                  e.target.style.outline = 'none';
+                  e.target.style.border = `2px solid ${palette.sage}`;
+                  e.target.style.transition = 'border-color 0.15s ease-out';
+                }}
+                onBlur={(e) => {
+                  setProjectFocused(false);
+                  e.target.style.border = `1.5px solid ${palette.mint}`;
+                  e.target.style.transition = 'border-color 0.15s ease-out';
+                }}
                 required
-                whileFocus={{ scale: 1.03, boxShadow: `0 0 0 2px ${palette.purple}` }}
+                aria-label="Project summary - Describe your client's project or situation"
+                aria-describedby="project-help"
+                autoComplete="off"
+                whileFocus={{ 
+                  scale: 1.01, 
+                  boxShadow: `0 0 0 2px ${palette.sage}33`,
+                  transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
+                }}
                 style={{
                   width: '100%',
-                  padding: '0.9rem 1rem',
+                  padding: 'clamp(0.7rem, 2vw, 0.9rem) 1rem',
                   border: `1.5px solid ${palette.mint}`,
                   borderRadius: '0.7rem',
                   background: `linear-gradient(90deg, ${palette.sage} 0%, ${palette.cream} 100%)`,
                   color: palette.black,
-                  fontSize: '1rem',
+                  fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
                   marginBottom: '0.2rem',
                   outline: 'none',
-                  fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                  fontFamily: '"Courier New", Courier, monospace',
                   boxSizing: 'border-box',
-                  transition: 'box-shadow 0.2s, border 0.2s',
-                  cursor: 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: hasPointer ? 'none' : 'auto',
                 }}
               />
             </div>
-            <div style={{ cursor: 'none' }}>
+            <div style={{ cursor: hasPointer ? 'none' : 'auto' }}>
+              <label htmlFor="intent" style={{ color: palette.black, fontWeight: 600, fontSize: '0.95rem', fontFamily: 'Poppins, Inter, Arial, sans-serif', display: 'block', marginBottom: '0.35rem' }}>
+                Your intent
+              </label>
               <motion.input
+                id="intent"
+                name="intent"
                 type="text"
-                placeholder="e.g., 'want to negotiate higher rate', 'need to propose timeline extension'"
+                placeholder={intent ? '' : intentHint}
                 value={intent}
                 onChange={e => setIntent(e.target.value)}
+                onFocus={(e) => {
+                  setIntentFocused(true);
+                  e.target.style.outline = 'none';
+                  e.target.style.border = `2px solid ${palette.sage}`;
+                  e.target.style.transition = 'border-color 0.15s ease-out';
+                }}
+                onBlur={(e) => {
+                  setIntentFocused(false);
+                  e.target.style.border = `1.5px solid ${palette.mint}`;
+                  e.target.style.transition = 'border-color 0.15s ease-out';
+                }}
                 required
-                whileFocus={{ scale: 1.03, boxShadow: `0 0 0 2px ${palette.purple}` }}
+                aria-label="Your intent - What do you want to achieve with this message"
+                aria-describedby="intent-help"
+                autoComplete="off"
+                whileFocus={{ 
+                  scale: 1.01, 
+                  boxShadow: `0 0 0 2px ${palette.sage}33`,
+                  transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
+                }}
                 style={{
                   width: '100%',
-                  padding: '0.9rem 1rem',
+                  padding: 'clamp(0.7rem, 2vw, 0.9rem) 1rem',
                   border: `1.5px solid ${palette.mint}`,
                   borderRadius: '0.7rem',
                   background: `linear-gradient(90deg, ${palette.sage} 0%, ${palette.cream} 100%)`,
                   color: palette.black,
-                  fontSize: '1rem',
+                  fontSize: 'clamp(0.9rem, 2.5vw, 1rem)',
                   marginBottom: '0.2rem',
                   outline: 'none',
-                  fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                  fontFamily: '"Courier New", Courier, monospace',
                   boxSizing: 'border-box',
-                  transition: 'box-shadow 0.2s, border 0.2s',
-                  cursor: 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: hasPointer ? 'none' : 'auto',
                 }}
               />
             </div>
-            <div style={{ cursor: 'none', display: 'flex', gap: '0.7rem', alignItems: 'center' }}>
-              <label htmlFor="template" style={{ color: palette.cream, fontWeight: 500, fontSize: '1rem', fontFamily: 'Poppins, Inter, Arial, sans-serif' }}>Tone/Template:</label>
-              <select
-                id="template"
-                value={template}
-                onChange={e => setTemplate(e.target.value)}
-                style={{
-                  borderRadius: '0.6rem',
-                  border: `1.5px solid ${palette.sage}`,
-                  padding: '0.5rem 0.8rem',
-                  fontFamily: 'Poppins, Inter, Arial, sans-serif',
-                  fontSize: '1rem',
-                  background: palette.cream,
-                  color: palette.black,
-                  cursor: 'none',
-                  outline: 'none',
-                  boxShadow: `0 1px 4px 0 ${palette.sand}22`,
-                  marginLeft: '0.2rem',
-                }}
-              >
+            <div style={{ cursor: hasPointer ? 'none' : 'auto', width: '100%' }}>
+              <label style={{ color: palette.black, fontWeight: 600, fontSize: 'clamp(0.9rem, 2.5vw, 1rem)', fontFamily: 'Poppins, Inter, Arial, sans-serif', display: 'block', marginBottom: '0.8rem' }}>Tone:</label>
+              <div style={{ 
+                display: 'flex', 
+                gap: '0.6rem', 
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
                 {templates.map(t => (
-                  <option key={t.label} value={t.value}>{t.label}</option>
+                  <motion.button
+                    key={t.label}
+                    type="button"
+                    onClick={() => setTemplate(t.value)}
+                    whileHover={{ 
+                      scale: 1.03,
+                      background: template === t.value 
+                        ? `linear-gradient(135deg, ${palette.purple} 0%, ${palette.sand} 100%)`
+                        : `linear-gradient(135deg, ${palette.sand} 0%, ${palette.sage} 100%)`,
+                      boxShadow: `0 4px 12px ${palette.purple}25`,
+                      transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
+                    }}
+                    whileTap={{ 
+                      scale: 0.97,
+                      transition: { duration: 0.08 }
+                    }}
+                    animate={{
+                      background: template === t.value 
+                        ? `linear-gradient(135deg, ${palette.purple} 0%, ${palette.sand} 100%)`
+                        : `linear-gradient(135deg, ${palette.cream} 0%, ${palette.mint} 100%)`,
+                      color: template === t.value ? palette.white : palette.black,
+                      boxShadow: template === t.value 
+                        ? `0 3px 8px ${palette.purple}30`
+                        : `0 2px 6px ${palette.sand}20`,
+                      border: template === t.value 
+                        ? `2px solid ${palette.purple}`
+                        : `1.5px solid ${palette.sage}`,
+                    }}
+                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '1.5rem',
+                      fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                      fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+                      fontWeight: template === t.value ? 600 : 500,
+                      cursor: hasPointer ? 'none' : 'pointer',
+                      outline: 'none',
+                      border: 'none',
+                      position: 'relative',
+                      overflow: 'hidden',
+                      minWidth: '80px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {template === t.value && (
+                      <motion.div
+                        layoutId="activeTone"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: `linear-gradient(135deg, ${palette.purple}15 0%, ${palette.sand}15 100%)`,
+                          borderRadius: '1.5rem',
+                          zIndex: -1,
+                        }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                      />
+                    )}
+                    {t.label}
+                  </motion.button>
                 ))}
-              </select>
+              </div>
             </div>
             <motion.button
               type="submit"
               disabled={loading}
-              whileHover={{ scale: 1.04, background: `linear-gradient(90deg, ${palette.purple} 0%, ${palette.sand} 100%)` }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ 
+                scale: 1.02, 
+                background: `linear-gradient(90deg, ${palette.purple} 0%, ${palette.sand} 100%)`,
+                transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
+              }}
+              whileTap={{ 
+                scale: 0.98,
+                transition: { duration: 0.08, ease: [0.16, 1, 0.3, 1] }
+              }}
               style={{
                 background: `linear-gradient(90deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
                 color: palette.white,
@@ -704,11 +846,11 @@ function App() {
                 borderRadius: '0.7rem',
                 padding: '0.9rem 1rem',
                 fontSize: '1.1rem',
-                cursor: 'none',
+                cursor: hasPointer ? 'none' : 'auto',
                 marginTop: '0.2rem',
-                boxShadow: `0 1.5px 6px 0 ${palette.sand}22`,
+                boxShadow: `0 6px 18px 0 ${palette.purple}22`,
                 opacity: loading ? 0.7 : 1,
-                transition: 'background 0.2s, transform 0.1s, color 0.2s, opacity 0.2s',
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
               {loading ? 'Generating...' : 'Generate'}
@@ -728,70 +870,146 @@ function App() {
                 <motion.div
                   key={output}
                   id="output"
-                  initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 40, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -30, scale: 0.98 }}
-                  transition={{ duration: 0.6, type: 'spring', stiffness: 60 }}
+                  exit={{ opacity: 0, y: -40, scale: 0.95 }}
+                  transition={{ 
+                      duration: 0.4, 
+                      type: 'spring', 
+                      stiffness: 120, 
+                      damping: 16,
+                      ease: [0.4, 0, 0.2, 1]
+                    }}
                   style={{
-                    background: palette.black,
+                    background: palette.cream,
                     padding: '1.2rem 2.2rem 1.2rem 1.2rem',
                     borderRadius: '1rem',
                     minHeight: 80,
                     maxHeight: 340,
                     width: '100%',
                     maxWidth: 600,
+                    margin: '0 auto', // center within wrapper
                     fontSize: '1.13rem',
                     whiteSpace: 'pre-wrap',
-                    boxShadow: `0 2px 12px 0 ${palette.sand}22`,
-                    color: palette.cream,
+                    boxShadow: `0 2px 10px 0 rgba(0,0,0,0.06)`,
+                    color: palette.black,
                     overflowY: 'auto',
-                    overflowX: 'auto',
-                    border: `2px solid ${palette.sand}`,
+                    overflowX: 'hidden',
+                    border: `1.5px solid ${palette.sand}`,
                     wordBreak: 'break-word',
-                    fontFamily: 'Poppins, Inter, Arial, sans-serif',
-                    transition: 'box-shadow 0.2s',
+                    fontFamily: '"Courier New", Courier, monospace',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                     boxSizing: 'border-box',
                     position: 'relative',
-                    cursor: 'none',
+                    cursor: hasPointer ? 'none' : 'auto',
                   }}
-                  dangerouslySetInnerHTML={{ __html: output }}
-                />
+                  className="generator-output"
+                >
+                  {/* Origin badge */}
+                  <div style={{
+                    position: 'sticky',
+                    top: 0,
+                    left: 0,
+                    display: 'inline-flex',
+                    gap: '0.4rem',
+                    zIndex: 6,
+                    marginBottom: '0.4rem'
+                  }}>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      letterSpacing: '0.08em',
+                      fontWeight: 700,
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: 6,
+                      background: origin === 'ai' ? palette.purple : palette.sage,
+                      color: origin === 'ai' ? palette.white : palette.black,
+                      boxShadow: `0 1px 4px 0 ${palette.sand}44`
+                    }}>{origin === 'ai' ? 'AI' : 'FALLBACK'}</span>
+                    {origin === 'fallback' && (
+                      <span style={{
+                        fontSize: '0.6rem',
+                        padding: '0.2rem 0.45rem',
+                        borderRadius: 6,
+                        background: palette.mint,
+                        color: palette.black,
+                        fontWeight: 600,
+                        boxShadow: `0 1px 3px 0 ${palette.sand}33`
+                      }}>Add API key for full AI</span>
+                    )}
+                  </div>
+                  <div dangerouslySetInnerHTML={{ __html: output }} />
+                  {/* Copy button moved inside the output box */}
+                  <motion.button
+                    type="button"
+                    onClick={handleCopy}
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 10,
+                      width: 30,
+                      height: 30,
+                      background: palette.mint,
+                      borderRadius: 8,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: hasPointer ? 'none' : 'pointer',
+                      border: `1.5px solid ${palette.sage}`,
+                      boxShadow: `0 1.5px 6px 0 ${palette.sand}22`,
+                      zIndex: 5,
+                      padding: 0,
+                    }}
+                    aria-label="Copy generated message"
+                    title="Copy to clipboard"
+                  >
+                    {copied ? (
+                      <svg viewBox="0 0 20 20" width={16} height={16} style={{ fill: palette.sand }}><path d="M7.629 15.314a1 1 0 0 1-1.415 0l-3.243-3.243a1 1 0 1 1 1.415-1.415l2.536 2.536 6.95-6.95a1 1 0 1 1 1.415 1.415l-7.658 7.657z"/></svg>
+                    ) : (
+                      <svg viewBox="0 0 20 20" width={16} height={16} style={{ fill: palette.black }}><path d="M6 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6.828A2 2 0 0 0 15.414 6L12 2.586A2 2 0 0 0 10.828 2H6zm0 2h4.828L16 7.172V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4zm2 4a1 1 0 0 1 1-1h2a1 1 0 1 1 0 2h-2a1 1 0 0 1-1-1z"/></svg>
+                    )}
+                  </motion.button>
+                </motion.div>
               )}
             </AnimatePresence>
-            {/* Copy icon */}
-            {output && output !== 'Your message will appear here...' && (
-              <motion.div
-                className="copy-icon"
-                onClick={handleCopy}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }}
-                style={{
-                  position: 'absolute',
-                  top: 10,
-                  right: 12,
-                  width: 26,
-                  height: 26,
-                  background: palette.mint,
-                  borderRadius: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'none',
-                  border: `1.5px solid ${palette.sage}`,
-                  boxShadow: `0 1.5px 6px 0 ${palette.sand}22`,
-                  zIndex: 2,
-                  transition: 'background 0.15s, box-shadow 0.15s',
-                }}
-                title="Copy to clipboard"
-              >
-                {copied ? (
-                  <svg viewBox="0 0 20 20" width={16} height={16} style={{ fill: palette.sand }}><path d="M7.629 15.314a1 1 0 0 1-1.415 0l-3.243-3.243a1 1 0 1 1 1.415-1.415l2.536 2.536 6.95-6.95a1 1 0 1 1 1.415 1.415l-7.658 7.657z"/></svg>
-                ) : (
-                  <svg viewBox="0 0 20 20" width={16} height={16} style={{ fill: palette.black }}><path d="M6 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6.828A2 2 0 0 0 15.414 6L12 2.586A2 2 0 0 0 10.828 2H6zm0 2h4.828L16 7.172V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4zm2 4a1 1 0 0 1 1-1h2a1 1 0 1 1 0 2h-2a1 1 0 0 1-1-1z"/></svg>
+            {genError && (
+              <div style={{
+                marginTop: '0.8rem',
+                background: palette.mint,
+                border: `1px solid ${palette.sage}`,
+                borderRadius: 10,
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.7rem',
+                fontFamily: '"Courier New", monospace',
+                color: palette.black,
+                lineHeight: 1.35,
+                boxShadow: `0 1px 4px 0 ${palette.sand}44`
+              }}>
+                {genError}
+                {origin === 'fallback' && (
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button
+                      onClick={() => handleSubmit({ preventDefault(){} } as any)}
+                      style={{
+                        background: palette.purple,
+                        color: palette.white,
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '0.45rem 0.75rem',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        boxShadow: `0 1px 4px 0 ${palette.sand}55`
+                      }}
+                      disabled={loading}
+                    >Retry AI</button>
+                    {!hasApiKey && (
+                      <span style={{ fontSize: '0.6rem', fontWeight: 600 }}>Add .env: VITE_OPENROUTER_API_KEY=your_key_here then reload.</span>
+                    )}
+                  </div>
                 )}
-              </motion.div>
+              </div>
             )}
             {/* History Toggle Icon & Monetization */}
             <div style={{ 
@@ -803,57 +1021,64 @@ function App() {
               gap: '1rem'
             }}>
               {/* History Toggle */}
-              {history.length > 0 && (
+      {history.length > 0 && (
                 <motion.button
                   onClick={() => setShowHistory(!showHistory)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   style={{
-                    background: showHistory ? palette.purple : palette.sand,
-                    color: showHistory ? palette.cream : palette.black,
-                    border: `3px solid ${showHistory ? palette.cream : palette.black}`,
-                    borderRadius: '10px',
-                    width: '36px',
-                    height: '36px',
+        background: 'transparent',
+        color: palette.purple,
+        border: `1.5px solid ${palette.purple}`,
+        borderRadius: '0.6rem',
+        width: '36px',
+        height: '36px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'none',
-                    boxShadow: `0 4px 12px 0 ${palette.sand}66`,
-                    transition: 'all 0.2s',
-                    fontSize: '18px',
-                    fontWeight: 'bold'
+        boxShadow: 'none',
+        transition: 'all 0.2s',
+        fontSize: '18px',
+        fontWeight: 700
                   }}
                   title="Toggle Message History"
                 >
-                  🕒
+                  {/* clock/history icon */}
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M12 7v5l3 3"></path>
+                  </svg>
                 </motion.button>
               )}
               
               {/* Monetization Buttons */}
               <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-                {(makeUpiLink(75) ? (
+        {(makeUpiLink(75) ? (
                   <motion.a
                     href={makeUpiLink(75, 'Thanks for the tool!')}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     style={{
-                      background: `linear-gradient(45deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
-                      color: palette.black,
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      border: 'none',
-                      borderRadius: '0.6rem',
-                      padding: '0.6rem 1rem',
-                      fontSize: '0.9rem',
-                      cursor: 'none',
-                      boxShadow: `0 2px 8px 0 ${palette.sand}33`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem'
+          background: 'transparent',
+          color: palette.purple,
+          fontWeight: 600,
+          textDecoration: 'none',
+          border: `1.5px solid ${palette.purple}`,
+          borderRadius: '0.6rem',
+          padding: '0.6rem 1rem',
+          fontSize: '0.9rem',
+          cursor: 'none',
+          boxShadow: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem'
                     }}
                   >
-                    ✨ UPI Tip
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 3.99 4 6.5 4c1.74 0 3.41 1.01 4.22 2.53C11.09 5.01 12.76 4 14.5 4 17.01 4 19 6 19 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                    UPI Tip
                   </motion.a>
                 ) : (
                   <motion.a
@@ -863,26 +1088,31 @@ function App() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     style={{
-                      background: `linear-gradient(45deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
-                      color: palette.black,
-                      fontWeight: 600,
-                      textDecoration: 'none',
-                      border: 'none',
-                      borderRadius: '0.6rem',
-                      padding: '0.6rem 1rem',
-                      fontSize: '0.9rem',
-                      cursor: 'none',
-                      boxShadow: `0 2px 8px 0 ${palette.sand}33`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem'
+          background: 'transparent',
+          color: palette.purple,
+          fontWeight: 600,
+          textDecoration: 'none',
+          border: `1.5px solid ${palette.purple}`,
+          borderRadius: '0.6rem',
+          padding: '0.6rem 1rem',
+          fontSize: '0.9rem',
+          cursor: 'none',
+          boxShadow: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem'
                     }}
                   >
-                    ☕ Tip
+                    {/* mug icon */}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M3 7h13v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7z"></path>
+                      <path d="M16 11h2a3 3 0 1 1 0 6h-2"></path>
+                    </svg>
+                    Tip
                   </motion.a>
                 ))}
                 
-                <motion.button
+        <motion.button
                   onClick={() => navigator.share ? navigator.share({
                     title: 'Client Message Generator',
                     text: 'Check out this amazing AI tool for freelancers!',
@@ -891,13 +1121,13 @@ function App() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   style={{
-                    background: palette.black,
-                    color: palette.cream,
-                    border: `1px solid ${palette.sage}`,
+          background: 'transparent',
+          color: palette.purple,
+          border: `1.5px solid ${palette.purple}`,
                     borderRadius: '0.6rem',
                     padding: '0.6rem',
                     cursor: 'none',
-                    boxShadow: `0 2px 8px 0 ${palette.sand}22`,
+          boxShadow: 'none',
                   }}
                   title="Share this tool"
                 >
@@ -1005,12 +1235,12 @@ function App() {
           <span style={{ color: palette.black, fontWeight: 600, background: `${palette.cream}CC`, borderRadius: 8, padding: '0.2rem 0.7rem', boxShadow: `0 1px 6px 0 ${palette.sand}22` }}>
             Free forever. If this helps, consider a small tip.
           </span>
-          <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             {/* UPI donate if configured */}
             {makeUpiLink(50) && (
               <a
                 href={makeUpiLink(50, 'Tip - Client Message Generator')}
-                style={{ background: palette.purple, color: palette.white, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, boxShadow: `0 1px 6px 0 ${palette.sand}22` }}
+        style={{ background: 'transparent', color: palette.purple, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, border: `1.5px solid ${palette.purple}` }}
               >
                 ₹50 UPI Tip
               </a>
@@ -1018,7 +1248,7 @@ function App() {
             {makeUpiLink(100) && (
               <a
                 href={makeUpiLink(100, 'Tip - Client Message Generator')}
-                style={{ background: palette.sand, color: palette.black, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, boxShadow: `0 1px 6px 0 ${palette.sand}22` }}
+        style={{ background: 'transparent', color: palette.purple, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, border: `1.5px solid ${palette.purple}` }}
               >
                 ₹100 UPI Tip
               </a>
@@ -1028,27 +1258,99 @@ function App() {
               href="https://ko-fi.com/bluemoonsoon"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ background: palette.black, color: palette.cream, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, border: `1px solid ${palette.sage}` }}
+              style={{ background: 'transparent', color: palette.purple, padding: '0.5rem 0.9rem', borderRadius: 8, textDecoration: 'none', fontWeight: 700, border: `1.5px solid ${palette.purple}` }}
             >
               Ko‑fi
             </a>
           </div>
-          <span style={{ fontSize: '0.98rem', opacity: 0.8, color: palette.black, background: `${palette.cream}B0`, borderRadius: 6, padding: '0.1rem 0.5rem', fontWeight: 500 }}>
-            Powered by OpenRouter, Vercel, and AI
-          </span>
+          
         </motion.div>
   </motion.div>
   {/* Studio-style sections */}
+  <Services />
+  <Testimonials />
+  <Logos />
   <div id="capabilities"><Capabilities /></div>
-  <Contact />
-  <Footer />
-      {/* Hide text cursor (I-beam) on all input fields */}
-      <style>{`
-        input, input:focus, input:hover, textarea, textarea:focus, textarea:hover {
-          cursor: none !important;
-        }
-      `}</style>
-  </>
+              </section>
+            </main>
+            <Contact />
+            <Footer />
+            {/* Hide text cursor (I-beam) on all input fields */}
+            <style>{`
+              input, input:focus, input:hover, textarea, textarea:focus, textarea:hover {
+                cursor: none !important;
+              }
+              
+              /* Hardware acceleration and performance optimizations */
+              * {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+              }
+              
+              /* Mobile optimizations */
+              @media (max-width: 768px) {
+                /* Prevent zoom on input focus */
+                input, textarea, select {
+                  font-size: 16px !important;
+                  transform: none !important;
+                }
+                
+                /* Optimize touch targets */
+                button, [role="button"] {
+                  min-height: 44px;
+                  min-width: 44px;
+                }
+                
+                /* Improve mobile scrolling */
+                body {
+                  -webkit-overflow-scrolling: touch;
+                  overscroll-behavior: contain;
+                }
+                
+                /* Mobile-specific transitions */
+                * {
+                  transition-duration: 0.2s !important;
+                }
+              }
+              
+              /* Optimize animations for 60fps */
+              [data-framer-component] {
+                will-change: transform, opacity;
+                transform: translate3d(0, 0, 0);
+                backface-visibility: hidden;
+              }
+              
+              /* Smooth transitions for all interactive elements */
+              button, input, [role="button"] {
+                transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
+                           opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                           background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                           border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+                           box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+                will-change: transform;
+              }
+              
+              /* Optimize scroll performance */
+              html {
+                scroll-behavior: smooth;
+              }
+              
+              /* Optimize repaints */
+              .motion-div {
+                contain: layout style paint;
+              }
+              
+              /* Mobile cursor handling */
+              @media (pointer: coarse) {
+                * {
+                  cursor: auto !important;
+                }
+              }
+            `}</style>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 

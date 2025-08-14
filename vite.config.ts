@@ -8,5 +8,7 @@ export default defineConfig(() => {
   return {
     plugins: [react()],
     base: isGhPages ? '/freelance-message-app/' : '/',
+  // Avoid OneDrive/Windows locks in node_modules/.vite
+  cacheDir: '.vite-cache',
   }
 })

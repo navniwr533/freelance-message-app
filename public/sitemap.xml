@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://freelance-message-app.vercel.app/</loc>
+    <lastmod>2025-08-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://freelance-message-app.vercel.app/og-image-1200x630.png</image:loc>
+      <image:caption>Freelance Message Generator - AI-Powered Client Communication Tool</image:caption>
+      <image:title>Professional message generation for freelancers</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://freelance-message-app.vercel.app/#work</loc>
+    <lastmod>2025-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://freelance-message-app.vercel.app/#capabilities</loc>
+    <lastmod>2025-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://freelance-message-app.vercel.app/#contact</loc>
+    <lastmod>2025-08-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+</urlset>
