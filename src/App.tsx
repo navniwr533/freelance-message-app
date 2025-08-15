@@ -63,12 +63,12 @@ function App() {
   const [genError, setGenError] = useState<string | null>(null);
   const [hasApiKey] = useState<boolean>(() => !!(import.meta as any).env?.VITE_OPENROUTER_API_KEY);
   // Expose OpenRouter API key
-  // const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
+  const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
   // Input focus state for hint logic
   const [projectFocused, setProjectFocused] = useState(false);
   const [intentFocused, setIntentFocused] = useState(false);
   // Message history
-  const [history] = useState(() => {
+  const [history, setHistory] = useState(() => {
     const saved = localStorage.getItem('messageHistory');
     return saved ? JSON.parse(saved) : [];
   });
@@ -262,9 +262,6 @@ function App() {
     e.preventDefault();
     setLoading(true);
     setGenError(null);
-    
-    // Get API key
-    const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
     
     // Model selection based on tone
     const getOrderedModels = () => {
