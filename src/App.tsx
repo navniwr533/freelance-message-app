@@ -82,7 +82,9 @@ function App() {
     { label: 'Gratitude', value: 'Express gratitude and appreciation.' },
   ];
   const [template, setTemplate] = useState(templates[0].value);
+  // Loading states for better UX
   const [loading, setLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState('Generate');
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   // For global custom cursor (zero latency, follows mouse exactly)
@@ -170,6 +172,34 @@ function App() {
       .replace(/\n/g, '<br>')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
+  }
+
+  // Enforce concise limits if concise tone is selected - SUPER STRICT
+  function enforceConciselimits(text: string, template: string): string {
+    if (!template.toLowerCase().includes('concise')) return text;
+    
+    // Remove HTML tags and get plain text
+    let plainText = text.replace(/<[^>]*>/g, '').trim();
+    
+    // Remove bullet points, numbers, and excessive formatting
+    plainText = plainText.replace(/^[-•*]\s*/gm, '').replace(/^\d+\.\s*/gm, '');
+    
+    // Split into sentences, take only the first one
+    const sentences = plainText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    let result = sentences[0]?.trim() || plainText;
+    
+    // Split into words and enforce 20 word limit (even stricter)
+    const words = result.split(/\s+/).filter(word => word.length > 0);
+    if (words.length > 20) {
+      result = words.slice(0, 20).join(' ');
+    }
+    
+    // Ensure proper ending
+    if (!result.match(/[.!?]$/)) {
+      result += '.';
+    }
+    
+    return cleanMessage(result);
   }
 
   // Smart fallback when AI APIs fail - uses intent classification
@@ -263,30 +293,48 @@ function App() {
     setLoading(true);
     setGenError(null);
     
-    // Model selection based on tone
+    // Dynamic loading messages for better UX
+    setLoadingText('Crafting...');
+    setTimeout(() => setLoadingText('Polishing...'), 2000);
+    setTimeout(() => setLoadingText('Almost ready...'), 5000);
+    
+    // Model selection based on tone - prioritize fastest models
     const getOrderedModels = () => {
-      const base = [
-        'deepseek/deepseek-chat-v3-0324:free',
-        'meta-llama/llama-3.1-8b-instruct:free',
-        'google/gemma-2-9b-it:free',
-        'mistralai/mistral-7b-instruct:free',
-        'qwen/qwen-2.5-7b-instruct:free',
+      // Fast, reliable models prioritized for speed
+      const fastModels = [
+        'meta-llama/llama-3.1-8b-instruct:free',  // Very fast
+        'deepseek/deepseek-chat-v3-0324:free',    // Fast and good quality
+        'google/gemma-2-9b-it:free',              // Fast Google model
+        'mistralai/mistral-7b-instruct:free',     // Reliable and quick
+        'qwen/qwen-2.5-7b-instruct:free',         // Good backup
       ];
-      return base;
+      return fastModels;
     };
     
     // Prompt setup
+    const isConcise = template.toLowerCase().includes('concise');
+    
     const systemPrompt = `You are an expert freelance messaging assistant.
+
+${isConcise ? '🚨🚨 ULTRA CONCISE MODE: Reply with EXACTLY ONE SHORT SENTENCE. Maximum 15 words total. No bullet points, no explanations, no formatting. Just ONE direct sentence answering their need. 🚨🚨' : ''}
 
 CRITICAL INSTRUCTIONS:
 - Do not include salutations like "Dear Client," at the beginning or closing sign-offs like "Regards," or "Sincerely," at the end.
-- Read the CLIENT CONTEXT and FREELANCER INTENT carefully.
-- Write a response that directly addresses the freelancer's specific goal.
-- Always analyze both the CLIENT CONTEXT and FREELANCER INTENT before crafting your response; integrate insights from both fields.
+- Read the CLIENT CONTEXT, FREELANCER INTENT, and TONE PREFERENCE carefully.
+- Write a response that directly addresses the freelancer's specific goal using the requested tone.
+- Always analyze all three fields before crafting your response; integrate insights from all inputs.
 - Do not describe your writing process or provide tips; only output the complete, ready-to-send message.
-- Use **bold** to highlight key points or important statements.
+- Use **bold** to highlight key points or important statements.${isConcise ? '' : `
 - Use bullet points when they improve clarity (max 4 points with "- " prefix).
-- Use numbered lists for sequential or step-by-step instructions (use "1. " prefix).
+- Use numbered lists for sequential or step-by-step instructions (use "1. " prefix).`}
+
+TONE GUIDELINES:
+- CONCISE: MANDATORY - Maximum 15 words total. One sentence only. No bullet points ever. Direct answer only.
+- FORMAL: Professional language, structured approach, avoid contractions
+- FRIENDLY: Warm, approachable tone while maintaining professionalism
+- APOLOGY: Acknowledge responsibility, express genuine regret, offer solutions
+- GRATITUDE: Express appreciation, acknowledge value, maintain humble confidence
+- DEFAULT: Balanced professional tone, clear and engaging
 
 RESPONSE FORMATS:
 - Single paragraph for simple responses.
@@ -294,15 +342,22 @@ RESPONSE FORMATS:
 - Mix formats when it enhances clarity.`;
 
     const userPrompt = `CLIENT CONTEXT: ${project}
-FREELANCER INTENT: ${intent}`;
+FREELANCER INTENT: ${intent}
+TONE PREFERENCE: ${template}`;
 
     try {
       if (!OPENROUTER_KEY) throw new Error('Missing OpenRouter API key');
       
-      // Direct fetch to OpenRouter primary model
+      // Direct fetch to OpenRouter primary model with timeout
       const model = getOrderedModels()[0];
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENROUTER_KEY}`,
@@ -315,11 +370,14 @@ FREELANCER INTENT: ${intent}`;
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: 350,
-          temperature: 0.8,
-          top_p: 0.9,
+          max_tokens: template.includes('concise') ? 25 : 280, // Ultra strict for concise
+          temperature: 0.4, // Lower for faster, more focused responses
+          top_p: 0.8, // Slightly lower for speed
+          frequency_penalty: 0.1, // Reduce repetition
         }),
       });
+      
+      clearTimeout(timeoutId); // Clear timeout on success
       
       if (!res.ok) {
         const errText = await res.text();
@@ -331,19 +389,43 @@ FREELANCER INTENT: ${intent}`;
       if (!content) throw new Error('No AI content returned');
       
       setOrigin('ai');
-      setOutput(cleanMessage(content));
+      const cleanedMessage = enforceConciselimits(cleanMessage(content), template);
+      setOutput(cleanedMessage);
+      
+      // Save to history
+      const newEntry = { project, intent, message: cleanedMessage, timestamp: new Date().toISOString() };
+      const updatedHistory = [newEntry, ...history].slice(0, 10); // Keep only last 10
+      setHistory(updatedHistory);
+      localStorage.setItem('messageHistory', JSON.stringify(updatedHistory));
+      
       try { (window as any).plausible?.('Generate Success'); } catch {}
       
     } catch (err: any) {
       console.error('AI generation error', err);
+      
+      // Handle specific timeout errors
+      if (err.name === 'AbortError') {
+        setGenError('Generation timeout - using fallback');
+      } else {
+        setGenError(err.message);
+      }
+      
       // Fallback if AI fails or key missing
       const fallback = generateOfflineFallback(project, intent, template);
       setOrigin('fallback');
-      setGenError(err.message);
-      setOutput(cleanMessage(fallback));
+      const cleanedFallback = enforceConciselimits(cleanMessage(fallback), template);
+      setOutput(cleanedFallback);
+      
+      // Save fallback to history too
+      const newEntry = { project, intent, message: cleanedFallback, timestamp: new Date().toISOString() };
+      const updatedHistory = [newEntry, ...history].slice(0, 10);
+      setHistory(updatedHistory);
+      localStorage.setItem('messageHistory', JSON.stringify(updatedHistory));
+      
       try { (window as any).plausible?.('Generate Failure'); } catch {}
     } finally {
       setLoading(false);
+      setLoadingText('Generate');
     }
   }
 
@@ -850,7 +932,7 @@ FREELANCER INTENT: ${intent}`;
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              {loading ? 'Generating...' : 'Generate'}
+              {loading ? loadingText : 'Generate'}
             </motion.button>
           </motion.form>
           <div
