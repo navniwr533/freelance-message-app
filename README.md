@@ -33,14 +33,16 @@
 ## 🎯 Use Cases
 
 ### Perfect for:
+
 - **Freelance Developers** - Handle client communications professionally
 - **Design Agencies** - Negotiate project scope and timelines
 - **Consultants** - Manage client expectations and pricing discussions
 - **Remote Workers** - Craft professional responses to challenging situations
 
 ### Message Types:
+
 - 💰 **Budget Negotiations** - Request higher rates with clear value proposition
-- ⏰ **Timeline Extensions** - Professional deadline adjustment requests  
+- ⏰ **Timeline Extensions** - Professional deadline adjustment requests
 - 🤝 **Project Proposals** - Compelling pitches for new work
 - 💔 **Difficult Conversations** - Handle scope creep and boundary setting
 - 🙏 **Professional Apologies** - Graceful error acknowledgment and resolution

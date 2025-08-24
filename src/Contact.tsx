@@ -9,6 +9,7 @@ const palette = {
 };
 
 import { useState } from 'react';
+import emailjs from '@emailjs/browser';
 
 export default function Contact() {
   const [sending, setSending] = useState(false);
@@ -43,14 +44,32 @@ export default function Contact() {
             if (Object.keys(errs).length) return;
             try {
               setSending(true);
-              const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-              if (!res.ok) throw new Error('Failed');
+              
+              // EmailJS configuration - using environment variables
+              const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_default';
+              const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_default';
+              const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'your_public_key';
+              
+              // Prepare email template parameters
+              const templateParams = {
+                from_name: body.name,
+                from_email: body.email,
+                to_email: 'ns9365967@gmail.com',
+                message: body.message,
+                company: body.company || 'Not provided',
+                website: body.website || 'Not provided',
+              };
+              
+              // Send email using EmailJS
+              await emailjs.send(serviceId, templateId, templateParams, publicKey);
+              
               (e.currentTarget as HTMLFormElement).reset();
               try { (window as any).plausible?.('Contact Submitted'); } catch {}
               setNotice({ ok: true, text: 'Thanks! I will get back to you shortly.' });
-            } catch {
+            } catch (error) {
+              console.error('EmailJS error:', error);
               try { (window as any).plausible?.('Contact Submit Failed'); } catch {}
-              setNotice({ ok: false, text: 'Failed to send. Please email me at navni@example.com' });
+              setNotice({ ok: false, text: 'Failed to send. Please email me at ns9365967@gmail.com' });
             } finally {
               setSending(false);
             }

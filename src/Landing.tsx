@@ -18,9 +18,20 @@ function SpreadText({ text }: { text: string }) {
   const words = text.split(' ');
   
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.5rem' }}>
+    <div style={{ 
+      display: 'flex', 
+      flexWrap: 'wrap', 
+      justifyContent: 'center', 
+      gap: '0.5rem',
+      paddingBottom: '0.2em',
+      overflow: 'visible'
+    }}>
       {words.map((word, wordIndex) => (
-        <div key={wordIndex} style={{ display: 'flex' }}>
+        <div key={wordIndex} style={{ 
+          display: 'flex',
+          paddingBottom: '0.1em',
+          overflow: 'visible'
+        }}>
           {word.split('').map((letter, letterIndex) => (
             <motion.span
               key={`${wordIndex}-${letterIndex}`}
@@ -45,9 +56,12 @@ function SpreadText({ text }: { text: string }) {
                 display: 'inline-block',
                 fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
                 fontWeight: 800,
-                letterSpacing: '-1px',
-                marginRight: letter === ' ' ? '0.3em' : '0.02em',
+                letterSpacing: '-0.5px',
+                marginRight: letter === ' ' ? '0.3em' : '0.05em',
                 willChange: 'transform, opacity, filter',
+                paddingBottom: '0.15em',
+                overflow: 'visible',
+                lineHeight: '1.1'
               }}
             >
               {letter}
@@ -162,8 +176,15 @@ export default function Landing({ onStart }: Props) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
             onClick={onStart} 
-            whileHover={{ scale: 1.04, transition: { duration: 0.15 } }} 
-            whileTap={{ scale: 0.98, transition: { duration: 0.1 } }} 
+            whileHover={{ 
+              scale: 1.04, 
+              backgroundColor: `${palette.purple}08`,
+              transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+            }} 
+            whileTap={{ 
+              scale: 0.98, 
+              transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+            }} 
             style={{ 
               background: 'transparent', 
               color: palette.purple, 
@@ -174,7 +195,9 @@ export default function Landing({ onStart }: Props) {
               fontSize: 'clamp(0.85rem, 2vw, 0.95rem)',
               cursor: 'pointer',
               minHeight: '44px',
-              willChange: 'transform'
+              willChange: 'transform, background-color',
+              outline: 'none',
+              boxSizing: 'border-box'
             }}
           >
             Open App
@@ -198,8 +221,10 @@ export default function Landing({ onStart }: Props) {
         >
           <div className="h1" style={{ 
             color: palette.purple, 
-            lineHeight: 1,
-            fontSize: 'clamp(2.2rem, 8vw, 4rem)'
+            lineHeight: 1.1,
+            fontSize: 'clamp(2.2rem, 8vw, 4rem)',
+            paddingBottom: '0.2em',
+            overflow: 'visible'
           }}>
             <SpreadText text="Messages that win clients" />
           </div>
@@ -222,8 +247,15 @@ export default function Landing({ onStart }: Props) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.8, ease: [0.16, 1, 0.3, 1] }}
             onClick={onStart} 
-            whileHover={{ scale: 1.05, transition: { duration: 0.15 } }} 
-            whileTap={{ scale: 0.96, transition: { duration: 0.1 } }} 
+            whileHover={{ 
+              scale: 1.05, 
+              backgroundColor: `${palette.purple}08`,
+              transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+            }} 
+            whileTap={{ 
+              scale: 0.96, 
+              transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+            }} 
             style={{ 
               marginTop: 'clamp(1rem, 3vw, 1.4rem)', 
               background: 'transparent', 
@@ -236,7 +268,9 @@ export default function Landing({ onStart }: Props) {
               cursor: 'pointer',
               fontSize: 'clamp(0.9rem, 2.2vw, 1rem)',
               minHeight: '48px',
-              willChange: 'transform'
+              willChange: 'transform, background-color',
+              outline: 'none',
+              boxSizing: 'border-box'
             }}
           >
             Start crafting
@@ -261,9 +295,9 @@ export default function Landing({ onStart }: Props) {
             data-marquee
             style={{ 
               display: 'flex', 
-              gap: 30, 
+              gap: 0, 
               whiteSpace: 'nowrap', 
-              animation: 'marquee 12s linear infinite', 
+              animation: 'marquee 30s linear infinite', 
               color: palette.purple, 
               fontWeight: 600,
               fontSize: 'clamp(0.75rem, 2vw, 0.9rem)',
@@ -271,8 +305,14 @@ export default function Landing({ onStart }: Props) {
               transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden'
             }}>
-            {Array.from({ length: 12 }).map((_, i) => (
-              <span key={i} style={{ padding: '0 1rem' }}>Strategy · Tone · Clarity · Speed</span>
+            {Array.from({ length: 50 }).map((_, i) => (
+              <span key={i} style={{ 
+                padding: '0 2rem',
+                flexShrink: 0,
+                display: 'inline-block'
+              }}>
+                Strategy · Tone · Clarity · Speed
+              </span>
             ))}
           </div>
         </motion.div>
@@ -280,8 +320,8 @@ export default function Landing({ onStart }: Props) {
       
       <style>{`
         @keyframes marquee { 
-          from { transform: translateX(0); } 
-          to { transform: translateX(-50%); } 
+          from { transform: translate3d(0, 0, 0); } 
+          to { transform: translate3d(-50%, 0, 0); } 
         }
         
         /* Hardware acceleration for marquee */

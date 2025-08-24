@@ -10,15 +10,14 @@ import Contact from './Contact';
 import Nav from './Nav';
 import Services from './Services';
 import Testimonials from './Testimonials';
-import Logos from './Logos';
 
 function App() {
   // Global loading state for IFOXY STUDIOS intro animation
   const [isIntroComplete, setIsIntroComplete] = useState(false);
   
-  // Complete intro after IFOXY STUDIOS animation - faster and smoother
+  // Complete intro after IFOXY STUDIOS animation - Extended for better brand impression
   React.useEffect(() => {
-    const timer = setTimeout(() => setIsIntroComplete(true), 2400); // Reduced to 2.4 seconds
+    const timer = setTimeout(() => setIsIntroComplete(true), 2800); // Extended intro duration for better brand impression
     return () => clearTimeout(timer);
   }, []);
 
@@ -67,11 +66,13 @@ function App() {
   // Input focus state for hint logic
   const [projectFocused, setProjectFocused] = useState(false);
   const [intentFocused, setIntentFocused] = useState(false);
-  // Message history
-  const [history, setHistory] = useState(() => {
+  // Message history with proper typing
+  const [history, setHistory] = useState<GeneratedMessage[]>(() => {
     const saved = localStorage.getItem('messageHistory');
     return saved ? JSON.parse(saved) : [];
   });
+  // Expandable history items
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   // Template/tone selector
   const templates = [
     { label: 'Default', value: '' },
@@ -87,47 +88,102 @@ function App() {
   const [loadingText, setLoadingText] = useState('Generate');
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  // For global custom cursor (zero latency, follows mouse exactly)
-  const [cursorPos, setCursorPos] = useState({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
-  const [hasPointer, setHasPointer] = useState(false);
+  // For global custom cursor (optimized initialization) - COMMENTED OUT
+  // const [cursorPos, setCursorPos] = useState(() => {
+  //   // Safe initialization to prevent stuck cursor
+  //   if (typeof window !== 'undefined') {
+  //     return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  //   }
+  //   return { x: 0, y: 0 };
+  // });
+  // const [hasPointer, setHasPointer] = useState(false);
 
-  // Check if device has fine pointer (mouse/trackpad) vs coarse pointer (touch)
-  React.useEffect(() => {
-    const checkPointer = () => {
-      setHasPointer(window.matchMedia('(pointer: fine)').matches);
-    };
-    checkPointer();
+  // Check if device has fine pointer (mouse/trackpad) vs coarse pointer (touch) - COMMENTED OUT
+  // React.useEffect(() => {
+  //   const checkPointer = () => {
+  //     const hasFinePinter = window.matchMedia('(pointer: fine)').matches;
+  //     setHasPointer(hasFinePinter);
+      
+  //     // Immediately update cursor position if pointer detected
+  //     if (hasFinePinter) {
+  //       const updateCursorNow = (e: MouseEvent) => {
+  //         setCursorPos({ x: e.clientX, y: e.clientY });
+  //         document.removeEventListener('mousemove', updateCursorNow);
+  //       };
+  //       document.addEventListener('mousemove', updateCursorNow, { passive: true, once: true });
+  //     }
+  //   };
+  //   checkPointer();
     
-    // Listen for changes (rare but possible)
-    const media = window.matchMedia('(pointer: fine)');
-    media.addEventListener('change', checkPointer);
-    return () => media.removeEventListener('change', checkPointer);
-  }, []);
+  //   // Listen for changes (rare but possible)
+  //   const media = window.matchMedia('(pointer: fine)');
+  //   media.addEventListener('change', checkPointer);
+  //   return () => media.removeEventListener('change', checkPointer);
+  // }, []);
 
   // (Click spark effect removed for speed)
   // Removed cursorType variations; single neutral cursor used for clarity
 
-  // Track mouse globally, update instantly (optimized for smooth performance)
-  React.useEffect(() => {
-    if (!hasPointer) return; // Don't track on touch devices
+  // Track mouse globally with 120fps performance and zero-lag during intro - COMMENTED OUT
+  // React.useEffect(() => {
+  //   if (!hasPointer) return; // Don't track on touch devices
     
-    const move = (e: MouseEvent) => {
-      // Direct update without requestAnimationFrame for zero-lag cursor
-      setCursorPos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', move, { passive: true });
-    return () => {
-      window.removeEventListener('mousemove', move);
-    };
-  }, [hasPointer]);
+  //   let rafId: number;
+  //   let lastTime = 0;
+  //   const throttleMs = 8.33; // True 120fps (8.33ms intervals)
+  //   let isFirstMove = true;
+    
+  //   const move = (e: MouseEvent) => {
+  //     const now = performance.now();
+      
+  //     // ZERO delay for first movement - instant response
+  //     if (isFirstMove) {
+  //       setCursorPos({ x: e.clientX, y: e.clientY });
+  //       isFirstMove = false;
+  //       lastTime = now;
+  //       return;
+  //     }
+      
+  //     if (now - lastTime < throttleMs) return; // Skip if too frequent
+      
+  //     // Use requestAnimationFrame for consistent 120fps updates
+  //     if (rafId) cancelAnimationFrame(rafId);
+  //     rafId = requestAnimationFrame(() => {
+  //       setCursorPos({ x: e.clientX, y: e.clientY });
+  //       lastTime = now;
+  //     });
+  //   };
+    
+  //   // Apply to entire document for consistent cursor speed everywhere
+  //   document.addEventListener('mousemove', move, { passive: true, capture: false });
+    
+  //   // Multiple initialization methods for instant cursor response
+  //   const initCursor = (e: MouseEvent) => {
+  //     setCursorPos({ x: e.clientX, y: e.clientY });
+  //     isFirstMove = false;
+  //   };
+    
+  //   // Immediate initialization on any mouse activity
+  //   document.addEventListener('mouseenter', initCursor, { passive: true, once: true });
+  //   document.addEventListener('mouseover', initCursor, { passive: true, once: true });
+  //   document.addEventListener('mousedown', initCursor, { passive: true, once: true });
+    
+  //   return () => {
+  //     document.removeEventListener('mousemove', move);
+  //     document.removeEventListener('mouseenter', initCursor);
+  //     document.removeEventListener('mouseover', initCursor);
+  //     document.removeEventListener('mousedown', initCursor);
+  //     if (rafId) cancelAnimationFrame(rafId);
+  //   };
+  // }, [hasPointer]);
 
-  // Hide system cursor only on pointer devices
-  React.useEffect(() => {
-    if (hasPointer) {
-      document.body.style.cursor = 'none';
-      return () => { document.body.style.cursor = ''; };
-    }
-  }, [hasPointer]);
+  // Hide system cursor only on pointer devices - COMMENTED OUT
+  // React.useEffect(() => {
+  //   if (hasPointer) {
+  //     document.body.style.cursor = 'none';
+  //     return () => { document.body.style.cursor = ''; };
+  //   }
+  // }, [hasPointer]);
 
   // Typewriter placeholder utility
   function useTypewriter(lines: string[], enabled: boolean) {
@@ -201,6 +257,155 @@ function App() {
     
     return cleanMessage(result);
   }
+
+  // Enhanced tone instruction system with your specific implementation
+  const getToneInstructions = (selectedTone: string): {
+    systemInstructions: string;
+    userPrefix: string;
+    modelParams: { maxTokens: number; temperature: number; topP: number };
+  } => {
+    const baseParams = { maxTokens: 350, temperature: 0.7, topP: 0.9 };
+    
+    switch (selectedTone) {
+      case 'formal':
+        return {
+          systemInstructions: `
+MANDATORY TONE: FORMAL BUSINESS COMMUNICATION
+Writing style requirements:
+- Use complete sentences with proper grammar
+- Formal vocabulary ("regarding" not "about", "however" not "but")
+- NO contractions (use "I am" not "I'm", "cannot" not "can't")
+- Professional distance while remaining helpful
+- Structured paragraphs with clear transitions
+
+Example phrases AS THE FREELANCER:
+- "I would be pleased to undertake this project..."
+- "Based on your requirements, I propose..."
+- "I can ensure delivery within the specified timeframe..."
+- "Please find below my detailed proposal..."
+
+Format for clarity:
+- Use **bold** for important terms, prices, and dates
+- Bullet points for listing deliverables or features
+- Clear paragraph breaks between different topics`,
+          userPrefix: "Write a FORMAL business message from freelancer to client:",
+          modelParams: { ...baseParams, temperature: 0.5, topP: 0.85 }
+        };
+        
+      case 'friendly':
+        return {
+          systemInstructions: `
+MANDATORY TONE: WARM AND APPROACHABLE
+Writing style requirements:
+- Conversational and enthusiastic language
+- Use contractions naturally (I'm, we'll, it's)
+- Show genuine excitement with exclamation marks!
+- Create partnership feeling with inclusive language
+- Personal touches that build rapport
+
+Example phrases AS THE FREELANCER:
+- "I'm really excited about your project!"
+- "I'd love to help bring your vision to life!"
+- "This sounds like a perfect match for my skills!"
+- "Can't wait to get started on this!"
+
+Format for engagement:
+- Use **bold** to highlight exciting aspects
+- Short paragraphs for easy reading
+- Bullet points for benefits or features (keep them punchy!)
+- Questions to encourage dialogue`,
+          userPrefix: "Write a FRIENDLY and enthusiastic message from freelancer to client:",
+          modelParams: { ...baseParams, temperature: 0.8, topP: 0.95 }
+        };
+        
+      case 'concise':
+        return {
+          systemInstructions: `
+MANDATORY: ULTRA-CONCISE MESSAGE
+CRITICAL RULES:
+1. Maximum 20 words total - ABSOLUTE LIMIT
+2. ONE sentence only
+3. NO formatting, NO bold, NO lists
+4. Essential information only
+5. Strong, direct statements
+6. Cut ALL filler words
+
+Example concise freelancer responses:
+- "I'll complete your website for $2000 by Friday."
+- "Timeline needs extending two weeks for quality."
+- "Project scope exceeds budget - proposing phased approach."
+- "Delivered milestone one - invoice attached for payment."`,
+          userPrefix: "Write ONLY the essential message in UNDER 20 WORDS:",
+          modelParams: { maxTokens: 50, temperature: 0.3, topP: 0.7 }
+        };
+        
+      case 'apology':
+        return {
+          systemInstructions: `
+MANDATORY TONE: SINCERE APOLOGY FROM FREELANCER TO CLIENT
+Structure your apology:
+1. Direct acknowledgment: "I apologize for [specific issue]"
+2. Take responsibility: "I should have [what you should have done]"
+3. Impact acknowledgment: "I understand this has caused [specific impact]"
+4. Concrete solution: "To fix this, I will [specific actions]"
+5. Prevention: "Going forward, I will [preventive measures]"
+
+Example phrases AS THE FREELANCER:
+- "I sincerely apologize for missing the deadline..."
+- "I take full responsibility for the miscommunication..."
+- "To make this right, I will work through the weekend..."
+- "You have every right to be frustrated..."
+
+Format for sincerity:
+- **Bold** the specific remedial actions
+- Clear paragraphs for each element
+- No excuses or deflection`,
+          userPrefix: "Write a SINCERE APOLOGY from freelancer to client:",
+          modelParams: { ...baseParams, temperature: 0.6 }
+        };
+        
+      case 'gratitude':
+        return {
+          systemInstructions: `
+MANDATORY TONE: GENUINE GRATITUDE FROM FREELANCER TO CLIENT
+Express appreciation structure:
+1. Specific thanks: What exactly are you grateful for?
+2. Impact: How does their action/support help you?
+3. Value: What does this mean for the project/relationship?
+4. Reciprocation: How you'll honor their trust/support
+
+Example phrases AS THE FREELANCER:
+- "Thank you so much for trusting me with this project!"
+- "Your clear feedback made all the difference..."
+- "I truly appreciate your patience during..."
+- "Your prompt payment allows me to..."
+
+Format for warmth:
+- **Bold** specific things you're grateful for
+- Personal touches showing genuine appreciation
+- Connect their action to positive outcomes`,
+          userPrefix: "Write a GRATEFUL message from freelancer to client:",
+          modelParams: { ...baseParams, temperature: 0.75 }
+        };
+        
+      default:
+        return {
+          systemInstructions: `
+TONE: BALANCED PROFESSIONAL
+- Clear and direct communication
+- Professional yet approachable
+- Focus on value and solutions
+- Appropriate detail level
+
+Format professionally:
+- **Bold** key information
+- Bullet points where helpful
+- Clear paragraph structure`,
+          userPrefix: "Write a professional message from freelancer to client:",
+          modelParams: baseParams
+        };
+    }
+  };
 
   // Smart fallback when AI APIs fail - uses intent classification
   function generateOfflineFallback(project: string, intent: string, template: string): string {
@@ -288,160 +493,466 @@ function App() {
     return `upi://pay?${parts.join('&')}`;
   };
 
+  // Supporting functions for improved handleSubmit
+  const getSmartModelOrder = (tone: string): string[] => {
+    // ACCURATE free models that handle numbers/facts correctly
+    const accurateFreeModels = [
+      'google/gemini-2.0-flash-exp:free',  // BEST for accuracy
+      'google/gemini-exp-1206:free',        // Excellent with numbers
+      'meta-llama/llama-3.1-70b-instruct:free', // Larger = more accurate
+      'meta-llama/llama-3.1-405b-instruct:free', // Huge model, very accurate
+      'nousresearch/hermes-3-llama-3.1-405b:free', // Great for precision
+      'qwen/qwen-2.5-72b-instruct',         // Good with facts
+      'mistralai/mistral-7b-instruct:free', // Decent baseline
+    ];
+    
+    // NOTE: Avoid meta-llama/llama-3.2-1b and 3.2-3b models - too small, hallucinate numbers
+    
+    const toneOptimizedOrder: { [key: string]: string[] } = {
+      concise: [
+        // For concise, prioritize ACCURATE models, not small ones!
+        'google/gemini-2.0-flash-exp:free',  // Fast AND accurate
+        'google/gemini-exp-1206:free',
+        'mistralai/mistral-7b-instruct:free',
+        ...accurateFreeModels.filter(m => !m.includes('405b')) // Skip huge ones for speed
+      ],
+      formal: [
+        'google/gemini-exp-1206:free',  // Best for professional accuracy
+        'nousresearch/hermes-3-llama-3.1-405b:free',
+        'meta-llama/llama-3.1-70b-instruct:free',
+        ...accurateFreeModels
+      ],
+      friendly: [
+        'google/gemini-2.0-flash-exp:free',
+        'meta-llama/llama-3.1-70b-instruct:free',
+        ...accurateFreeModels
+      ],
+      apology: [
+        'google/gemini-exp-1206:free',
+        'nousresearch/hermes-3-llama-3.1-405b:free',
+        ...accurateFreeModels
+      ],
+      gratitude: [
+        'google/gemini-2.0-flash-exp:free',
+        'meta-llama/llama-3.1-70b-instruct:free',
+        ...accurateFreeModels
+      ],
+      default: accurateFreeModels
+    };
+    
+    // Add premium models at the beginning if API key has credits
+    const premiumModels = [
+      'anthropic/claude-3-5-sonnet',
+      'openai/gpt-4o-mini',  // Cheaper but accurate
+    ];
+    
+    const models = toneOptimizedOrder[tone] || toneOptimizedOrder.default;
+    return [...premiumModels, ...models, 'openrouter/auto']; // Auto as final fallback
+  };
+
+  const validateAndProcessMessage = (message: string, tone: string): string | null => {
+    if (!message || message.trim().length === 0) return null;
+    
+    // Clean up common issues
+    message = message
+      .replace(/^(dear|hi|hello|greetings|hey)\s+\w+[,!]?\s*/gi, '')
+      .replace(/(regards|sincerely|best|thanks|thank you|cheers|yours|warm regards|best regards|respectfully)[,.]?\s*$/gi, '')
+      .trim();
+    
+    // Tone-specific validation and processing
+    switch (tone) {
+      case 'concise':
+        // Strict enforcement for concise
+        const sentences = message.split(/[.!?]+/).filter(s => s.trim());
+        if (sentences.length === 0) return null;
+        
+        let conciseMessage = sentences[0].trim();
+        const words = conciseMessage.split(/\s+/);
+        
+        if (words.length > 20) {
+          // Force truncation with intelligent cutting
+          const importantWords = words.filter(w => 
+            !['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'].includes(w.toLowerCase())
+          );
+          conciseMessage = importantWords.slice(0, 15).join(' ');
+        }
+        
+        // Remove any formatting
+        conciseMessage = conciseMessage.replace(/[*_~`]/g, '');
+        
+        return conciseMessage.endsWith('.') ? conciseMessage : conciseMessage + '.';
+        
+      case 'formal':
+        // Verify formal tone markers
+        if (message.includes("can't") || message.includes("won't") || message.includes("I'm")) {
+          message = message
+            .replace(/can't/g, 'cannot')
+            .replace(/won't/g, 'will not')
+            .replace(/I'm/g, 'I am')
+            .replace(/we'll/g, 'we will')
+            .replace(/it's/g, 'it is');
+        }
+        break;
+        
+      case 'friendly':
+        // Ensure friendly tone has appropriate warmth
+        if (!message.includes('!') && message.length < 200) {
+          // Add subtle enthusiasm if missing
+          message = message.replace(/\.$/, '!');
+        }
+        break;
+    }
+    
+    return message;
+  };
+
+  const generateEnhancedFallback = (project: string, intent: string, tone: string): string => {
+    // Actually analyze the user inputs instead of using generic templates
+    const projectLower = project.toLowerCase().trim();
+    const intentLower = intent.toLowerCase().trim();
+    
+    // Extract key information from project description
+    const projectType = projectLower.includes('saas') ? 'SaaS platform' :
+                       projectLower.includes('website') ? 'website' :
+                       projectLower.includes('app') ? 'mobile app' :
+                       projectLower.includes('ecommerce') ? 'ecommerce site' :
+                       projectLower.includes('landing') ? 'landing page' :
+                       'project';
+    
+    // Extract key information from intent
+    const isTimeline = intentLower.includes('timeline') || intentLower.includes('deadline') || intentLower.includes('week') || intentLower.includes('month');
+    const isBudget = intentLower.includes('budget') || intentLower.includes('price') || intentLower.includes('cost') || intentLower.includes('rate');
+    const isQuestion = intentLower.includes('question') || intentLower.includes('ask') || intentLower.includes('clarify');
+    
+    // Extract specific timeline/budget mentions
+    const timelineMatch = intent.match(/(\d+)\s*(week|month|day)s?/i);
+    const budgetMatch = intent.match(/\$?(\d+)/);
+    
+    // Generate contextual response based on actual inputs
+    let response = '';
+    
+    if (tone === 'concise') {
+      if (isTimeline && timelineMatch) {
+        response = `Requesting ${timelineMatch[0]} for the ${projectType}. Will ensure quality delivery within this timeframe.`;
+      } else if (isBudget && budgetMatch) {
+        response = `Proposing $${budgetMatch[1]} budget adjustment for the ${projectType} to meet requirements effectively.`;
+      } else if (isQuestion) {
+        response = `Need clarification on ${projectType} requirements. Can we discuss specifics?`;
+      } else {
+        response = `Regarding your ${projectType}: ${intent.split(' ').slice(0, 8).join(' ')}. Let's discuss next steps.`;
+      }
+    } else if (tone === 'formal') {
+      if (isTimeline && timelineMatch) {
+        response = `I am writing regarding the ${projectType} timeline. Based on the scope discussed, I would like to request ${timelineMatch[0]} to ensure comprehensive delivery that meets all requirements and quality standards.`;
+      } else if (isBudget) {
+        response = `Thank you for providing the ${projectType} details. After reviewing the requirements, I believe a budget discussion would be beneficial to ensure optimal results within your parameters.`;
+      } else if (isQuestion) {
+        response = `I have reviewed your ${projectType} requirements and have some questions to ensure precise delivery. Would you be available for a brief discussion to clarify the specific details?`;
+      } else {
+        response = `Thank you for sharing the ${projectType} information. I understand you need assistance with: ${intent}. I am prepared to address this professionally and efficiently.`;
+      }
+    } else { // friendly
+      if (isTimeline && timelineMatch) {
+        response = `Thanks for the ${projectType} details! I'd love to work on this with you. For the timeline, ${timelineMatch[0]} would work perfectly to make sure everything is polished and meets your vision.`;
+      } else if (isBudget) {
+        response = `Excited about your ${projectType}! I think we can create something amazing together. Let's chat about the budget to make sure we're aligned on delivering great results.`;
+      } else if (isQuestion) {
+        response = `Your ${projectType} sounds interesting! I have a few quick questions to make sure I understand exactly what you're looking for. Mind if we hop on a brief call?`;
+      } else {
+        response = `Love the concept for your ${projectType}! Regarding "${intent}" - I'm definitely up for helping with this. Let's discuss how we can make it happen!`;
+      }
+    }
+    
+    return response;
+  };
+
+  // Type for generated messages
+  interface GeneratedMessage {
+    id: string;
+    project: string;
+    intent: string;
+    template: string;
+    output: string;
+    timestamp: Date;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setGenError(null);
+    setOrigin('ai'); // Assume AI first
     
-    // Dynamic loading messages for better UX
-    setLoadingText('Crafting...');
-    setTimeout(() => setLoadingText('Polishing...'), 2000);
-    setTimeout(() => setLoadingText('Almost ready...'), 5000);
+    const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
     
-    // Model selection based on tone - prioritize fastest models
-    const getOrderedModels = () => {
-      // Fast, reliable models prioritized for speed
-      const fastModels = [
-        'meta-llama/llama-3.1-8b-instruct:free',  // Very fast
-        'deepseek/deepseek-chat-v3-0324:free',    // Fast and good quality
-        'google/gemma-2-9b-it:free',              // Fast Google model
-        'mistralai/mistral-7b-instruct:free',     // Reliable and quick
-        'qwen/qwen-2.5-7b-instruct:free',         // Good backup
-      ];
-      return fastModels;
-    };
+    if (!OPENROUTER_KEY) {
+      console.log('🔴 NO API KEY - Using fallback template');
+      setGenError('OpenRouter API key not configured');
+      const fallback = generateOfflineFallback(project, intent, template);
+      setOutput(fallback);
+      setOrigin('fallback');
+      setLoading(false);
+      return;
+    }
     
-    // Prompt setup
-    const isConcise = template.toLowerCase().includes('concise');
+    const selectedTone = templates.find(t => t.value === template)?.label?.toLowerCase() || 'default';
+    const toneConfig = getToneInstructions(selectedTone);
     
-    const systemPrompt = `You are an expert freelance messaging assistant.
+    // Enhanced system prompt that clearly establishes the freelancer-client relationship
+    const systemPrompt = `You are writing AS a freelancer directly TO their client.
 
-${isConcise ? '🚨🚨 ULTRA CONCISE MODE: Reply with EXACTLY ONE SHORT SENTENCE. Maximum 15 words total. No bullet points, no explanations, no formatting. Just ONE direct sentence answering their need. 🚨🚨' : ''}
+CRITICAL CONTEXT:
+- You ARE the freelancer writing this message
+- You are writing TO the client who hired you (or wants to hire you)
+- The PROJECT SUMMARY describes what the CLIENT wants/needs from you
+- The FREELANCER INTENT is what YOU (the freelancer) want to communicate to the client
+- Generate the ACTUAL message the freelancer will send - not advice or consultation
 
-CRITICAL INSTRUCTIONS:
-- Do not include salutations like "Dear Client," at the beginning or closing sign-offs like "Regards," or "Sincerely," at the end.
-- Read the CLIENT CONTEXT, FREELANCER INTENT, and TONE PREFERENCE carefully.
-- Write a response that directly addresses the freelancer's specific goal using the requested tone.
-- Always analyze all three fields before crafting your response; integrate insights from all inputs.
-- Do not describe your writing process or provide tips; only output the complete, ready-to-send message.
-- Use **bold** to highlight key points or important statements.${isConcise ? '' : `
-- Use bullet points when they improve clarity (max 4 points with "- " prefix).
-- Use numbered lists for sequential or step-by-step instructions (use "1. " prefix).`}
+ABSOLUTE REQUIREMENTS:
+1. NO greetings (Dear, Hi, Hello) at the start
+2. NO sign-offs (Regards, Sincerely, Thanks) at the end
+3. Write in FIRST person as the freelancer ("I can deliver...", "I will need...")
+4. Address the client directly in SECOND person ("your project", "you mentioned")
+5. Follow the tone instructions EXACTLY as specified below
 
-TONE GUIDELINES:
-- CONCISE: MANDATORY - Maximum 15 words total. One sentence only. No bullet points ever. Direct answer only.
-- FORMAL: Professional language, structured approach, avoid contractions
-- FRIENDLY: Warm, approachable tone while maintaining professionalism
-- APOLOGY: Acknowledge responsibility, express genuine regret, offer solutions
-- GRATITUDE: Express appreciation, acknowledge value, maintain humble confidence
-- DEFAULT: Balanced professional tone, clear and engaging
+${toneConfig.systemInstructions}
 
-RESPONSE FORMATS:
-- Single paragraph for simple responses.
-- Multiple paragraphs for complex situations.
-- Mix formats when it enhances clarity.`;
+FORMATTING GUIDELINES:
+${selectedTone === 'concise' ? 
+  '- Plain text only - NO formatting, NO bold, NO lists' : 
+  `- Use **bold** to emphasize key points (prices, timelines, deliverables)
+- Use bullet points (- ) for listing services, features, or deliverables (max 4 items)
+- Use numbered lists (1. ) for step-by-step processes or phases
+- Break into paragraphs for better readability when appropriate
+- For complex messages, consider using subtle section breaks`
+}
 
-    const userPrompt = `CLIENT CONTEXT: ${project}
-FREELANCER INTENT: ${intent}
-TONE PREFERENCE: ${template}`;
+MESSAGE STRUCTURE:
+${selectedTone === 'concise' ? 
+  'Single sentence. Core message only. Under 20 words.' :
+  selectedTone === 'formal' ?
+  `1. Professional acknowledgment of their requirements
+2. Clear statement of your proposal/response
+3. Detailed explanation with specifics
+4. Clear next steps or call to action` :
+  selectedTone === 'friendly' ?
+  `1. Warm acknowledgment showing enthusiasm
+2. Your main response/proposal
+3. Additional value or personal touch
+4. Engaging question or next step` :
+  selectedTone === 'apology' ?
+  `1. Direct acknowledgment of the issue
+2. Take responsibility without excuses
+3. Specific solution or remedy
+4. Commitment to improvement` :
+  selectedTone === 'gratitude' ?
+  `1. Specific appreciation for what they did
+2. How it impacts you positively
+3. Value it brings to the project
+4. Forward-looking statement` :
+  `1. Acknowledge their needs
+2. Present your response/solution
+3. Support with details if needed
+4. Clear action items`
+}
 
-    try {
-      if (!OPENROUTER_KEY) throw new Error('Missing OpenRouter API key');
+REMEMBER: You're the freelancer responding to the client's project needs with your specific intent.`;
+
+    // Enhanced user prompt that's much clearer about the relationship
+    const userPrompt = `Generate a message FROM the freelancer TO the client.
+
+${toneConfig.userPrefix}
+
+WHAT THE CLIENT WANTS/NEEDS (Project Summary):
+${project}
+
+WHAT THE FREELANCER WANTS TO COMMUNICATE (Your Intent):
+${intent}
+
+Based on the above, write the freelancer's message to the client that accomplishes the freelancer's intent while addressing the client's project needs.
+
+${selectedTone === 'concise' ? 
+  'CRITICAL: Maximum 20 words! One sentence only!' : 
+  `Tone reminder: ${selectedTone} - Make sure the tone is clearly ${selectedTone} throughout the message.`}`;
+
+    const models = getSmartModelOrder(selectedTone);
+    let finalMessage: string | null = null;
+    let attempts = 0;
+    const maxAttempts = Math.min(15, models.length); // Try up to 15 models
+    let hitPremiumLimit = false;
+    
+    const loadingMessages = [
+      "Generating with AI...",
+      "Trying premium models...",
+      "Premium limit reached, switching to free models...",
+      "Connecting to free Llama model...",
+      "Trying Google Gemini free tier...",
+      "Attempting Qwen model...",
+      "Connecting to Mistral...",
+      "Trying alternative free models...",
+      "Searching for available AI...",
+      "Almost there...",
+      "Finding best available model...",
+      "One more attempt...",
+      "Finalizing generation..."
+    ];
+    
+    console.log(`🚀 Starting AI generation for ${selectedTone} tone with ${models.length} available models`);
+    
+    while (attempts < maxAttempts && !finalMessage) {
+      const model = models[attempts];
+      const isPremium = !model.includes(':free') && !model.includes('auto');
+      attempts++;
       
-      // Direct fetch to OpenRouter primary model with timeout
-      const model = getOrderedModels()[0];
+      // Skip premium models if we already hit the limit
+      if (isPremium && hitPremiumLimit) {
+        console.log(`⏭️ Skipping premium model ${model} (already hit limit)`);
+        continue;
+      }
       
-      // Create abort controller for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      setOutput(loadingMessages[Math.min(attempts - 1, loadingMessages.length - 1)]);
       
-      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_KEY}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'Client Message Generator',
-        },
-        body: JSON.stringify({
+      console.log(`🔄 Attempt ${attempts}/${maxAttempts}: Trying ${model} (${isPremium ? 'PREMIUM' : 'FREE'})`);
+      
+      try {
+        const controller = new AbortController();
+        const timeoutMs = isPremium ? 25000 : 30000; // More time for free models
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        const requestBody = {
           model,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          max_tokens: template.includes('concise') ? 25 : 280, // Ultra strict for concise
-          temperature: 0.4, // Lower for faster, more focused responses
-          top_p: 0.8, // Slightly lower for speed
-          frequency_penalty: 0.1, // Reduce repetition
-        }),
-      });
-      
-      clearTimeout(timeoutId); // Clear timeout on success
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`OpenRouter ${res.status}: ${errText.slice(0,160)}`);
+          ...toneConfig.modelParams,
+          stream: false,
+        };
+        
+        console.log(`📤 Sending request to ${model}...`);
+        
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENROUTER_KEY}`,
+            'HTTP-Referer': window.location.origin,
+            'X-Title': 'Freelance Message Generator',
+          },
+          signal: controller.signal,
+          body: JSON.stringify(requestBody),
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorData;
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText };
+          }
+          
+          console.warn(`❌ Model ${model} failed (${response.status}):`, errorData?.error?.message || errorText.slice(0, 200));
+          
+          // Detect premium limit errors
+          if (response.status === 403 || response.status === 402) {
+            if (isPremium) {
+              console.log(`💰 Premium model ${model} hit limit - switching to FREE models only`);
+              hitPremiumLimit = true;
+            }
+          } else if (response.status === 404) {
+            console.log(`🚫 Model ${model} not found - trying next`);
+          } else if (response.status === 429) {
+            console.log(`⏳ Rate limit hit - waiting 2s before retry`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else if (response.status === 401) {
+            console.error('🔑 Invalid API key!');
+            throw new Error('Invalid API key');
+          }
+          continue;
+        }
+        
+        const data = await response.json();
+        const content = data.choices?.[0]?.message?.content;
+        
+        if (!content || content.trim().length < 10) {
+          console.warn(`⚠️ Invalid/empty content from ${model}`);
+          continue;
+        }
+        
+        console.log(`✅ SUCCESS with ${isPremium ? 'PREMIUM' : 'FREE'} model: ${model}`);
+        console.log(`📝 Raw AI Response (first 200 chars): ${content.slice(0, 200)}...`);
+        
+        // Validate and process the message
+        finalMessage = validateAndProcessMessage(content, selectedTone);
+        
+        if (finalMessage) {
+          console.log(`🎉 Final processed message ready (${finalMessage.length} chars)`);
+          setOrigin('ai');
+          break;
+        }
+        
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.warn(`⏱️ Timeout for model ${model}`);
+        } else if (error.message === 'Invalid API key') {
+          setGenError('API key authentication failed');
+          break;
+        } else {
+          console.error(`🔥 Error with model ${model}:`, error.message || error);
+        }
       }
-      
-      const data = await res.json();
-      const content = data.choices?.[0]?.message?.content;
-      if (!content) throw new Error('No AI content returned');
-      
-      setOrigin('ai');
-      const cleanedMessage = enforceConciselimits(cleanMessage(content), template);
-      setOutput(cleanedMessage);
-      
-      // Save to history
-      const newEntry = { project, intent, message: cleanedMessage, timestamp: new Date().toISOString() };
-      const updatedHistory = [newEntry, ...history].slice(0, 10); // Keep only last 10
-      setHistory(updatedHistory);
-      localStorage.setItem('messageHistory', JSON.stringify(updatedHistory));
-      
-      try { (window as any).plausible?.('Generate Success'); } catch {}
-      
-    } catch (err: any) {
-      console.error('AI generation error', err);
-      
-      // Handle specific timeout errors
-      if (err.name === 'AbortError') {
-        setGenError('Generation timeout - using fallback');
-      } else {
-        setGenError(err.message);
-      }
-      
-      // Fallback if AI fails or key missing
-      const fallback = generateOfflineFallback(project, intent, template);
-      setOrigin('fallback');
-      const cleanedFallback = enforceConciselimits(cleanMessage(fallback), template);
-      setOutput(cleanedFallback);
-      
-      // Save fallback to history too
-      const newEntry = { project, intent, message: cleanedFallback, timestamp: new Date().toISOString() };
-      const updatedHistory = [newEntry, ...history].slice(0, 10);
-      setHistory(updatedHistory);
-      localStorage.setItem('messageHistory', JSON.stringify(updatedHistory));
-      
-      try { (window as any).plausible?.('Generate Failure'); } catch {}
-    } finally {
-      setLoading(false);
-      setLoadingText('Generate');
     }
+    
+    // Only use fallback if ALL models failed
+    if (!finalMessage) {
+      console.log('🔴 ALL AI MODELS FAILED - Using template fallback as last resort');
+      console.log(`📊 Tried ${attempts} models, hit premium limit: ${hitPremiumLimit}`);
+      finalMessage = generateEnhancedFallback(project, intent, selectedTone);
+      setOrigin('fallback');
+      setGenError('All AI services unavailable - using smart fallback');
+    } else {
+      console.log('✨ Successfully generated AI message');
+    }
+    
+    // Save to history
+    const newMessage: GeneratedMessage = {
+      id: Date.now().toString(),
+      project,
+      intent,
+      template,
+      output: finalMessage,
+      timestamp: new Date(),
+    };
+    
+    const updatedHistory = [newMessage, ...history.slice(0, 9)];
+    setHistory(updatedHistory);
+    localStorage.setItem('messageHistory', JSON.stringify(updatedHistory));
+    
+    // Apply final tone enforcement for concise messages
+    if (selectedTone === 'concise') {
+      finalMessage = enforceConciselimits(finalMessage, template);
+    }
+    
+    setOutput(cleanMessage(finalMessage));
+    setLoading(false);
   }
 
   // Upgrade disabled (free forever)
 
   return (
     <>
-      {/* Custom global cursor - ALWAYS on top */}
+      {/* 
+      Custom global cursor - COMMENTED OUT
       {hasPointer && (
         <div
             style={{
               position: 'fixed',
-              left: cursorPos.x - 14,
-              top: cursorPos.y - 14,
-              width: 28,
-              height: 28,
+              left: cursorPos.x - 12,
+              top: cursorPos.y - 12,
+              width: 24,
+              height: 24,
               borderRadius: '50%',
               pointerEvents: 'none',
               zIndex: 999999,
@@ -450,14 +961,16 @@ TONE PREFERENCE: ${template}`;
               boxSizing: 'border-box',
               willChange: 'transform',
               transform: 'translate3d(0, 0, 0)',
-              background: `radial-gradient(circle at 50% 50%, ${palette.cream} 0%, ${palette.sand}AA 70%, transparent 100%)`,
-              boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
+              background: `radial-gradient(circle at 50% 50%, ${palette.cream} 0%, ${palette.sand}66 70%, transparent 100%)`,
+              boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
               transition: 'none',
             }}
           />
       )}
+      */}
       
-      {/* IFOXY STUDIOS Intro Animation */}
+      
+      {/* IFOXY STUDIOS Intro Animation - Extended Duration with Ultra-Smooth 120fps Transitions */}
       <AnimatePresence mode="wait">
         {!isIntroComplete && (
           <motion.div
@@ -465,12 +978,13 @@ TONE PREFERENCE: ${template}`;
             animate={{ opacity: 1 }}
             exit={{ 
               opacity: 0,
-              scale: 1.02,
-              filter: "blur(4px)"
+              scale: 1.002,
+              filter: 'blur(1px)'
             }}
             transition={{ 
-              duration: 0.5,
-              ease: [0.16, 1, 0.3, 1]
+              duration: 0.6,
+              ease: [0.25, 0.46, 0.45, 0.94],
+              delay: 0.1
             }}
             style={{
               position: 'fixed',
@@ -481,20 +995,35 @@ TONE PREFERENCE: ${template}`;
               background: `linear-gradient(135deg, ${palette.cream} 0%, #F8F4EC 50%, ${palette.mint} 100%)`,
               zIndex: 1000,
               willChange: 'transform, opacity, filter',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
+              contain: 'layout style paint',
             }}
           >
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
+              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0, 
+                scale: 1,
+                transition: {
+                  duration: 1.2,
+                  ease: [0.25, 0.46, 0.45, 0.94],
+                  delay: 0.3
+                }
+              }}
               exit={{ 
                 opacity: 0, 
-                y: -10, 
-                scale: 0.98
+                y: -8, 
+                scale: 1.02,
+                transition: {
+                  duration: 0.5,
+                  ease: [0.25, 0.46, 0.45, 0.94]
+                }
               }}
               transition={{ 
-                duration: 0.8, 
-                ease: [0.16, 1, 0.3, 1],
-                delay: 0.1 
+                duration: 0.2, 
+                ease: [0.25, 0.46, 0.45, 0.94]
               }}
               style={{
                 fontSize: 'clamp(2.5rem, 8vw, 5rem)',
@@ -504,6 +1033,9 @@ TONE PREFERENCE: ${template}`;
                 textAlign: 'center',
                 textShadow: `0 2px 20px ${palette.purple}20`,
                 willChange: 'transform, opacity',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)',
+                contain: 'layout style',
               }}
             >
               IFOXY STUDIOS
@@ -512,28 +1044,31 @@ TONE PREFERENCE: ${template}`;
         )}
       </AnimatePresence>
 
-      {/* Main App Content - Show after intro */}
+      {/* Main App Content - Enhanced 120fps Optimized Transition */}
       <AnimatePresence mode="wait">
         {isIntroComplete && (
           <motion.div
             initial={{ 
               opacity: 0,
-              y: 8,
-              filter: "blur(6px)",
-              scale: 0.99
+              scale: 0.995,
+              y: 8
             }}
             animate={{ 
               opacity: 1,
-              y: 0,
-              filter: "blur(0px)",
-              scale: 1
+              scale: 1,
+              y: 0
             }}
             transition={{ 
-              duration: 0.6, 
-              ease: [0.16, 1, 0.3, 1],
-              delay: 0.05
+              duration: 0.8, 
+              ease: [0.25, 0.46, 0.45, 0.94],
+              delay: 0.1
             }}
-            style={{ willChange: 'transform, opacity, filter' }}
+            style={{ 
+              willChange: 'transform, opacity',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)',
+              contain: 'layout style paint'
+            }}
           >
             <Nav />
             {/* Landing hero */}
@@ -550,7 +1085,7 @@ TONE PREFERENCE: ${template}`;
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{ duration: 0.4 }}
         style={{
           minHeight: '100vh',
           width: '100%',
@@ -570,28 +1105,27 @@ TONE PREFERENCE: ${template}`;
         {/* Heavy animated background gradient and glow */}
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.2 }}
+          animate={{ opacity: 0.8 }}
+          transition={{ duration: 0.4 }}
           style={{
             position: 'fixed',
             inset: 0,
             zIndex: 0,
             pointerEvents: 'none',
-            background: `radial-gradient(circle at 70% 30%, ${palette.purple}22 0%, transparent 50%), radial-gradient(circle at 20% 80%, ${palette.sand}22 0%, transparent 60%)`,
+            background: `radial-gradient(circle at 70% 30%, ${palette.purple}15 0%, transparent 50%), radial-gradient(circle at 20% 80%, ${palette.sand}15 0%, transparent 60%)`,
             mixBlendMode: 'multiply',
-            // animation removed to reduce jank on low-power devices
           }}
         />
         <motion.div
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
-          transition={{ duration: 1.2, delay: 0.2 }}
+          animate={{ opacity: 0.5 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
           style={{
             position: 'fixed',
             inset: 0,
             zIndex: 0,
             pointerEvents: 'none',
-            background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'100%25\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'2\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.035\'/%3E%3C/svg%3E")',
+            background: 'url("data:image/svg+xml,%3Csvg width=\'100%25\' height=\'100%25\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'2\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.02\'/%3E%3C/svg%3E")',
           }}
         />
         <style>{`
@@ -599,12 +1133,25 @@ TONE PREFERENCE: ${template}`;
             0% { filter: blur(0px) brightness(1); }
             100% { filter: blur(3.5px) brightness(1.12); }
           }
+          
+          @keyframes slideDown {
+            0% { 
+              opacity: 0; 
+              transform: translateY(-10px); 
+              max-height: 0;
+            }
+            100% { 
+              opacity: 1; 
+              transform: translateY(0); 
+              max-height: 500px;
+            }
+          }
         `}</style>
         {/* Animated site theory/description */}
         <motion.div
           initial={{ opacity: 0, y: -40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.9, type: 'spring', stiffness: 60 }}
+          transition={{ delay: 0.1, duration: 0.5, type: 'spring', stiffness: 80 }}
           style={{
             zIndex: 2,
             marginBottom: '1.5rem',
@@ -619,10 +1166,12 @@ TONE PREFERENCE: ${template}`;
             fontWeight: 700,
             fontSize: '2.1rem',
             color: palette.purple,
-            letterSpacing: '-1.5px',
+            letterSpacing: '-1.2px',
             textShadow: `0 2px 16px ${palette.purple}33`,
             display: 'block',
             marginBottom: '0.5rem',
+            overflow: 'visible',
+            paddingRight: '2px',
           }}>
             The Ultimate Client Message Generator
           </span>
@@ -642,7 +1191,7 @@ TONE PREFERENCE: ${template}`;
           ref={cardRef}
           initial={{ y: 60, opacity: 0, scale: 0.98 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', stiffness: 80, damping: 16, duration: 0.7 }}
+          transition={{ type: 'spring', stiffness: 100, damping: 20, duration: 0.4 }}
           style={{
             background: palette.cream,
             borderRadius: '1.3rem',
@@ -660,15 +1209,15 @@ TONE PREFERENCE: ${template}`;
             boxSizing: 'border-box',
             zIndex: 3,
             overflow: 'visible',
-            cursor: hasPointer ? 'none' : 'auto',
+            cursor: 'auto',
           }}
           onMouseMove={e => {
             if (!cardRef.current) return;
             const rect = cardRef.current.getBoundingClientRect();
             const newX = e.clientX - rect.left;
             const newY = e.clientY - rect.top;
-            // Only update if position changed significantly (reduces jank)
-            if (Math.abs(newX - cursor.x) > 2 || Math.abs(newY - cursor.y) > 2) {
+            // Increased threshold to reduce updates and improve performance
+            if (Math.abs(newX - cursor.x) > 15 || Math.abs(newY - cursor.y) > 15) {
               setCursor({
                 x: newX,
                 y: newY,
@@ -683,20 +1232,20 @@ TONE PREFERENCE: ${template}`;
           {/* Cursor-following animated gradient overlay */}
           {cursor.active && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 0.25, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 0.15, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
               style={{
                 pointerEvents: 'none',
                 position: 'absolute',
-                left: cursor.x - 60,
-                top: cursor.y - 60,
-                width: 120,
-                height: 120,
+                left: cursor.x - 40,
+                top: cursor.y - 40,
+                width: 80,
+                height: 80,
                 borderRadius: '50%',
-                background: `radial-gradient(circle, ${palette.purple}33 0%, ${palette.sand}15 70%, transparent 100%)`,
-                filter: 'blur(4px)',
+                background: `radial-gradient(circle, ${palette.purple}25 0%, ${palette.sand}10 70%, transparent 100%)`,
+                filter: 'blur(3px)',
                 zIndex: 10,
                 willChange: 'transform, opacity',
               }}
@@ -705,7 +1254,7 @@ TONE PREFERENCE: ${template}`;
           <motion.h2
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ delay: 0.05, duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             style={{
               marginBottom: '1.2rem',
               fontWeight: 600,
@@ -726,7 +1275,7 @@ TONE PREFERENCE: ${template}`;
               display: 'flex', 
               flexDirection: 'column', 
               gap: '1rem', 
-              cursor: hasPointer ? 'none' : 'auto',
+              cursor: 'auto',
               padding: '0 1rem'
             }}
             onSubmit={handleSubmit}
@@ -734,7 +1283,7 @@ TONE PREFERENCE: ${template}`;
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.7, type: 'spring', stiffness: 60 }}
           >
-            <div style={{ cursor: hasPointer ? 'none' : 'auto' }}>
+            <div style={{ cursor: 'auto' }}>
               <label htmlFor="project" style={{ color: palette.black, fontWeight: 600, fontSize: '0.95rem', fontFamily: 'Poppins, Inter, Arial, sans-serif', display: 'block', marginBottom: '0.35rem' }}>
                 Project summary
               </label>
@@ -778,11 +1327,11 @@ TONE PREFERENCE: ${template}`;
                   fontFamily: '"Courier New", Courier, monospace',
                   boxSizing: 'border-box',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  cursor: hasPointer ? 'none' : 'auto',
+                  cursor: 'text',
                 }}
               />
             </div>
-            <div style={{ cursor: hasPointer ? 'none' : 'auto' }}>
+            <div style={{ cursor: 'auto' }}>
               <label htmlFor="intent" style={{ color: palette.black, fontWeight: 600, fontSize: '0.95rem', fontFamily: 'Poppins, Inter, Arial, sans-serif', display: 'block', marginBottom: '0.35rem' }}>
                 Your intent
               </label>
@@ -826,11 +1375,11 @@ TONE PREFERENCE: ${template}`;
                   fontFamily: '"Courier New", Courier, monospace',
                   boxSizing: 'border-box',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  cursor: hasPointer ? 'none' : 'auto',
+                  cursor: 'text',
                 }}
               />
             </div>
-            <div style={{ cursor: hasPointer ? 'none' : 'auto', width: '100%' }}>
+            <div style={{ cursor: 'auto', width: '100%' }}>
               <label style={{ color: palette.black, fontWeight: 600, fontSize: 'clamp(0.9rem, 2.5vw, 1rem)', fontFamily: 'Poppins, Inter, Arial, sans-serif', display: 'block', marginBottom: '0.8rem' }}>Tone:</label>
               <div style={{ 
                 display: 'flex', 
@@ -839,83 +1388,70 @@ TONE PREFERENCE: ${template}`;
                 justifyContent: 'center',
                 alignItems: 'center'
               }}>
-                {templates.map(t => (
-                  <motion.button
-                    key={t.label}
-                    type="button"
-                    onClick={() => setTemplate(t.value)}
-                    whileHover={{ 
-                      scale: 1.03,
-                      background: template === t.value 
-                        ? `linear-gradient(135deg, ${palette.purple} 0%, ${palette.sand} 100%)`
-                        : `linear-gradient(135deg, ${palette.sand} 0%, ${palette.sage} 100%)`,
-                      boxShadow: `0 4px 12px ${palette.purple}25`,
-                      transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
-                    }}
-                    whileTap={{ 
-                      scale: 0.97,
-                      transition: { duration: 0.08 }
-                    }}
-                    animate={{
-                      background: template === t.value 
-                        ? `linear-gradient(135deg, ${palette.purple} 0%, ${palette.sand} 100%)`
-                        : `linear-gradient(135deg, ${palette.cream} 0%, ${palette.mint} 100%)`,
-                      color: template === t.value ? palette.white : palette.black,
-                      boxShadow: template === t.value 
-                        ? `0 3px 8px ${palette.purple}30`
-                        : `0 2px 6px ${palette.sand}20`,
-                      border: template === t.value 
-                        ? `2px solid ${palette.purple}`
-                        : `1.5px solid ${palette.sage}`,
-                    }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '1.5rem',
-                      fontFamily: 'Poppins, Inter, Arial, sans-serif',
-                      fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
-                      fontWeight: template === t.value ? 600 : 500,
-                      cursor: hasPointer ? 'none' : 'pointer',
-                      outline: 'none',
-                      border: 'none',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      minWidth: '80px',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {template === t.value && (
-                      <motion.div
-                        layoutId="activeTone"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: `linear-gradient(135deg, ${palette.purple}15 0%, ${palette.sand}15 100%)`,
-                          borderRadius: '1.5rem',
-                          zIndex: -1,
-                        }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                      />
-                    )}
-                    {t.label}
-                  </motion.button>
-                ))}
+                {templates.map(t => {
+                  const isSelected = template === t.value;
+                  return (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() => setTemplate(t.value)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        borderRadius: '1.5rem',
+                        fontFamily: 'Poppins, Inter, Arial, sans-serif',
+                        fontSize: 'clamp(0.8rem, 2vw, 0.9rem)',
+                        fontWeight: isSelected ? 600 : 500,
+                        cursor: 'pointer',
+                        outline: 'none',
+                        border: isSelected 
+                          ? `2px solid ${palette.purple}`
+                          : `1.5px solid ${palette.sage}`,
+                        background: isSelected 
+                          ? `linear-gradient(135deg, ${palette.purple} 0%, ${palette.sand} 100%)`
+                          : `linear-gradient(135deg, ${palette.cream} 0%, ${palette.mint} 100%)`,
+                        color: isSelected ? palette.white : palette.black,
+                        boxShadow: isSelected 
+                          ? `0 2px 6px ${palette.purple}25`
+                          : `0 1px 3px ${palette.sand}15`,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        minWidth: '80px',
+                        textAlign: 'center',
+                        transition: 'transform 0.05s ease-out',
+                        transform: 'scale(1)',
+                        willChange: 'transform',
+                        backfaceVisibility: 'hidden',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.015)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                      }}
+                      onMouseDown={(e) => {
+                        e.currentTarget.style.transform = 'scale(0.985)';
+                      }}
+                      onMouseUp={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.015)';
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <motion.button
               type="submit"
               disabled={loading}
               whileHover={{ 
-                scale: 1.02, 
+                scale: 1.015, 
                 background: `linear-gradient(90deg, ${palette.purple} 0%, ${palette.sand} 100%)`,
-                transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
+                transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
               }}
               whileTap={{ 
-                scale: 0.98,
-                transition: { duration: 0.08, ease: [0.16, 1, 0.3, 1] }
+                scale: 0.985,
+                transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
               }}
               style={{
                 background: `linear-gradient(90deg, ${palette.sand} 0%, ${palette.purple} 100%)`,
@@ -925,11 +1461,16 @@ TONE PREFERENCE: ${template}`;
                 borderRadius: '0.7rem',
                 padding: '0.9rem 1rem',
                 fontSize: '1.1rem',
-                cursor: hasPointer ? 'none' : 'auto',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 marginTop: '0.2rem',
                 boxShadow: `0 6px 18px 0 ${palette.purple}22`,
                 opacity: loading ? 0.7 : 1,
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                transition: 'opacity 0.15s ease-out',
+                willChange: 'transform, background',
+                outline: 'none',
+                boxSizing: 'border-box',
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)',
               }}
             >
               {loading ? loadingText : 'Generate'}
@@ -949,16 +1490,31 @@ TONE PREFERENCE: ${template}`;
                 <motion.div
                   key={output}
                   id="output"
-                  initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -40, scale: 0.95 }}
+                  initial={{ 
+                    opacity: 0, 
+                    y: 30, 
+                    scale: 0.96,
+                    filter: 'blur(8px)'
+                  }}
+                  animate={{ 
+                    opacity: 1, 
+                    y: 0, 
+                    scale: 1,
+                    filter: 'blur(0px)'
+                  }}
+                  exit={{ 
+                    opacity: 0, 
+                    y: -20, 
+                    scale: 0.98,
+                    filter: 'blur(4px)'
+                  }}
                   transition={{ 
-                      duration: 0.4, 
-                      type: 'spring', 
-                      stiffness: 120, 
-                      damping: 16,
-                      ease: [0.4, 0, 0.2, 1]
-                    }}
+                    duration: 0.8, 
+                    type: 'spring', 
+                    stiffness: 80, 
+                    damping: 20,
+                    ease: [0.25, 0.46, 0.45, 0.94]
+                  }}
                   style={{
                     background: palette.cream,
                     padding: '1.2rem 2.2rem 1.2rem 1.2rem',
@@ -970,17 +1526,20 @@ TONE PREFERENCE: ${template}`;
                     margin: '0 auto', // center within wrapper
                     fontSize: '1.13rem',
                     whiteSpace: 'pre-wrap',
-                    boxShadow: `0 2px 10px 0 rgba(0,0,0,0.06)`,
+                    boxShadow: `0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)`,
                     color: palette.black,
                     overflowY: 'auto',
                     overflowX: 'hidden',
                     border: `1.5px solid ${palette.sand}`,
                     wordBreak: 'break-word',
                     fontFamily: '"Courier New", Courier, monospace',
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
                     boxSizing: 'border-box',
                     position: 'relative',
-                    cursor: hasPointer ? 'none' : 'auto',
+                    willChange: 'transform, opacity, filter',
+                    backfaceVisibility: 'hidden',
+                    transform: 'translateZ(0)',
+                    cursor: 'text',
                   }}
                   className="generator-output"
                 >
@@ -1021,8 +1580,14 @@ TONE PREFERENCE: ${template}`;
                   <motion.button
                     type="button"
                     onClick={handleCopy}
-                    whileHover={{ scale: 1.08 }}
-                    whileTap={{ scale: 0.92 }}
+                    whileHover={{ 
+                      scale: 1.06,
+                      transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+                    }}
+                    whileTap={{ 
+                      scale: 0.94,
+                      transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+                    }}
                     style={{
                       position: 'absolute',
                       top: 8,
@@ -1034,11 +1599,14 @@ TONE PREFERENCE: ${template}`;
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      cursor: hasPointer ? 'none' : 'pointer',
+                      cursor: 'pointer',
                       border: `1.5px solid ${palette.sage}`,
                       boxShadow: `0 1.5px 6px 0 ${palette.sand}22`,
                       zIndex: 5,
                       padding: 0,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden',
+                      transform: 'translateZ(0)',
                     }}
                     aria-label="Copy generated message"
                     title="Copy to clipboard"
@@ -1100,58 +1668,75 @@ TONE PREFERENCE: ${template}`;
               gap: '1rem'
             }}>
               {/* History Toggle */}
-      {history.length > 0 && (
-                <motion.button
-                  onClick={() => setShowHistory(!showHistory)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  style={{
-        background: 'transparent',
-        color: palette.purple,
-        border: `1.5px solid ${palette.purple}`,
-        borderRadius: '0.6rem',
-        width: '36px',
-        height: '36px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'none',
-        boxShadow: 'none',
-        transition: 'all 0.2s',
-        fontSize: '18px',
-        fontWeight: 700
-                  }}
-                  title="Toggle Message History"
-                >
-                  {/* clock/history icon */}
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <path d="M12 7v5l3 3"></path>
-                  </svg>
-                </motion.button>
-              )}
+              <motion.button
+                onClick={() => setShowHistory(!showHistory)}
+                whileHover={{ 
+                  scale: 1.04,
+                  transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+                }}
+                whileTap={{ 
+                  scale: 0.96,
+                  transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+                }}
+                style={{
+                  background: 'transparent',
+                  color: history.length > 0 ? palette.purple : palette.sage,
+                  border: `1.5px solid ${history.length > 0 ? palette.purple : palette.sage}`,
+                  borderRadius: '0.6rem',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: 'none',
+                  transition: 'color 0.15s ease-out, border-color 0.15s ease-out, opacity 0.15s ease-out',
+                  fontSize: '18px',
+                  fontWeight: 700,
+                  opacity: history.length > 0 ? 1 : 0.6,
+                  willChange: 'transform',
+                  backfaceVisibility: 'hidden',
+                  transform: 'translateZ(0)',
+                }}
+                title={history.length > 0 ? "Toggle Message History" : "No message history yet"}
+              >
+                {/* clock/history icon */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M12 7v5l3 3"></path>
+                </svg>
+              </motion.button>
               
               {/* Monetization Buttons */}
               <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
         {(makeUpiLink(75) ? (
                   <motion.a
                     href={makeUpiLink(75, 'Thanks for the tool!')}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ 
+                      scale: 1.03,
+                      transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+                    }}
+                    whileTap={{ 
+                      scale: 0.97,
+                      transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+                    }}
                     style={{
-          background: 'transparent',
-          color: palette.purple,
-          fontWeight: 600,
-          textDecoration: 'none',
-          border: `1.5px solid ${palette.purple}`,
-          borderRadius: '0.6rem',
-          padding: '0.6rem 1rem',
-          fontSize: '0.9rem',
-          cursor: 'none',
-          boxShadow: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.4rem'
+                      background: 'transparent',
+                      color: palette.purple,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      border: `1.5px solid ${palette.purple}`,
+                      borderRadius: '0.6rem',
+                      padding: '0.6rem 1rem',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      boxShadow: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden',
+                      transform: 'translateZ(0)',
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -1164,22 +1749,31 @@ TONE PREFERENCE: ${template}`;
                     href="https://ko-fi.com/bluemoonsoon"
                     target="_blank"
                     rel="noopener noreferrer"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ 
+                      scale: 1.03,
+                      transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+                    }}
+                    whileTap={{ 
+                      scale: 0.97,
+                      transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+                    }}
                     style={{
-          background: 'transparent',
-          color: palette.purple,
-          fontWeight: 600,
-          textDecoration: 'none',
-          border: `1.5px solid ${palette.purple}`,
-          borderRadius: '0.6rem',
-          padding: '0.6rem 1rem',
-          fontSize: '0.9rem',
-          cursor: 'none',
-          boxShadow: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.4rem'
+                      background: 'transparent',
+                      color: palette.purple,
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      border: `1.5px solid ${palette.purple}`,
+                      borderRadius: '0.6rem',
+                      padding: '0.6rem 1rem',
+                      fontSize: '0.9rem',
+                      cursor: 'pointer',
+                      boxShadow: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden',
+                      transform: 'translateZ(0)',
                     }}
                   >
                     {/* mug icon */}
@@ -1191,22 +1785,31 @@ TONE PREFERENCE: ${template}`;
                   </motion.a>
                 ))}
                 
-        <motion.button
+                <motion.button
                   onClick={() => navigator.share ? navigator.share({
                     title: 'Client Message Generator',
                     text: 'Check out this amazing AI tool for freelancers!',
                     url: window.location.href
                   }) : navigator.clipboard.writeText(window.location.href)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ 
+                    scale: 1.03,
+                    transition: { duration: 0.08, ease: [0.25, 0.46, 0.45, 0.94] }
+                  }}
+                  whileTap={{ 
+                    scale: 0.97,
+                    transition: { duration: 0.05, ease: [0.25, 0.46, 0.45, 0.94] }
+                  }}
                   style={{
-          background: 'transparent',
-          color: palette.purple,
-          border: `1.5px solid ${palette.purple}`,
+                    background: 'transparent',
+                    color: palette.purple,
+                    border: `1.5px solid ${palette.purple}`,
                     borderRadius: '0.6rem',
                     padding: '0.6rem',
-                    cursor: 'none',
-          boxShadow: 'none',
+                    cursor: 'pointer',
+                    boxShadow: 'none',
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    transform: 'translateZ(0)',
                   }}
                   title="Share this tool"
                 >
@@ -1221,49 +1824,231 @@ TONE PREFERENCE: ${template}`;
             {showHistory && history.length > 0 && (
               <div style={{ marginTop: '2.2rem', background: palette.sand, borderRadius: 12, padding: '1.1rem 1.2rem', boxShadow: `0 1.5px 8px 0 ${palette.sage}22`, color: palette.black, maxWidth: 600, width: '100%' }}>
                 <div style={{ fontWeight: 700, fontSize: '1.08rem', marginBottom: '0.7rem', color: palette.purple, letterSpacing: '-0.5px' }}>Message History</div>
-                <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-                  {history.map((h: any, i: number) => (
-                    <div key={i} style={{ background: palette.cream, borderRadius: 8, padding: '0.7rem 1rem', fontSize: '1.01rem', color: palette.black, boxShadow: `0 1px 4px 0 ${palette.sage}11`, position: 'relative' }}>
-                      <div style={{ fontWeight: 600, color: palette.purple, fontSize: '0.98rem', marginBottom: 2 }}>{h.project} <span style={{ color: palette.sage, fontWeight: 400, fontSize: '0.93rem' }}>({h.template ? templates.find(t => t.value === h.template)?.label : 'Default'})</span></div>
-                      <div style={{ color: palette.sage, fontSize: '0.97rem', marginBottom: 2 }}>{h.intent}</div>
-                      <div style={{ color: palette.black, marginTop: 2 }} dangerouslySetInnerHTML={{ __html: h.message }} />
-                      <div style={{ fontSize: '0.85rem', color: palette.sage, marginTop: 2 }}>{new Date(h.date).toLocaleString()}</div>
-                      {/* Share/Export buttons */}
-                      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 8 }}>
-                        <button
+                <div style={{ maxHeight: 500, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  {history.map((h: any, i: number) => {
+                    const isExpanded = expandedItems.has(i);
+                    return (
+                      <div key={i} style={{ 
+                        background: palette.cream, 
+                        borderRadius: 10, 
+                        boxShadow: `0 2px 6px 0 ${palette.sage}22`, 
+                        overflow: 'visible',
+                        border: `1px solid ${palette.sage}33`,
+                        marginBottom: isExpanded ? '1rem' : '0'
+                      }}>
+                        {/* Clickable header */}
+                        <div 
                           onClick={() => {
-                            const text = h.message.replace(/<br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '');
-                            if (navigator.share) {
-                              navigator.share({ text });
-                            } else {
-                              navigator.clipboard.writeText(text);
-                              alert('Copied to clipboard!');
+                            const newExpanded = new Set<number>();
+                            if (!isExpanded) {
+                              newExpanded.add(i); // Only expand this one, auto-collapse others
                             }
+                            // If already expanded, clicking will collapse (newExpanded stays empty)
+                            setExpandedItems(newExpanded);
                           }}
-                          style={{ background: palette.mint, border: 'none', borderRadius: 6, padding: '0.2rem 0.7rem', fontWeight: 600, color: palette.black, cursor: 'pointer', fontSize: '0.97rem', boxShadow: `0 1px 4px 0 ${palette.sage}11` }}
-                          title="Share or copy"
-                        >Share</button>
-                        <button
-                          onClick={() => {
-                            const text = h.message.replace(/<br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '');
-                            const blob = new Blob([text], { type: 'text/plain' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = `client-message-${i + 1}.txt`;
-                            document.body.appendChild(a);
-                            a.click();
-                            setTimeout(() => {
-                              document.body.removeChild(a);
-                              URL.revokeObjectURL(url);
-                            }, 100);
+                          style={{ 
+                            padding: '1rem 1.2rem', 
+                            cursor: 'pointer',
+                            background: 'transparent',
+                            transition: 'background-color 0.2s ease',
+                            borderBottom: isExpanded ? `2px solid ${palette.sage}44` : 'none',
+                            position: 'relative'
                           }}
-                          style={{ background: palette.sage, border: 'none', borderRadius: 6, padding: '0.2rem 0.7rem', fontWeight: 600, color: palette.black, cursor: 'pointer', fontSize: '0.97rem', boxShadow: `0 1px 4px 0 ${palette.sage}11` }}
-                          title="Export as .txt"
-                        >Export</button>
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = `${palette.mint}66`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ 
+                                fontWeight: 700, 
+                                color: palette.purple, 
+                                fontSize: '1.05rem', 
+                                marginBottom: '0.4rem',
+                                lineHeight: 1.3,
+                                wordBreak: 'break-word'
+                              }}>
+                                {h.project}
+                              </div>
+                              <div style={{ 
+                                color: palette.black, 
+                                fontSize: '0.95rem',
+                                fontWeight: 500,
+                                marginBottom: '0.3rem',
+                                lineHeight: 1.4,
+                                wordBreak: 'break-word'
+                              }}>
+                                Intent: {h.intent}
+                              </div>
+                              <div style={{ 
+                                color: palette.sage, 
+                                fontSize: '0.85rem',
+                                fontWeight: 600
+                              }}>
+                                Tone: {h.template ? templates.find(t => t.value === h.template)?.label : 'Default'}
+                                <span style={{ marginLeft: '1rem', fontSize: '0.8rem' }}>
+                                  {new Date(h.timestamp).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div style={{ 
+                              fontSize: '1.2rem', 
+                              color: palette.purple, 
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 0.25s ease',
+                              flexShrink: 0,
+                              marginTop: '0.2rem'
+                            }}>
+                              ▼
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Expandable content */}
+                        {isExpanded && (
+                          <div style={{
+                            animation: 'slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                            background: palette.white,
+                            borderTop: `1px solid ${palette.sage}33`,
+                            position: 'relative'
+                          }}>
+                            <div style={{ padding: '1.2rem', paddingTop: '2rem' }}>
+                              {/* Copy button like main generator */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const text = h.output.replace(/<br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '');
+                                  navigator.clipboard.writeText(text);
+                                  // Brief visual feedback
+                                  const btn = e.currentTarget;
+                                  const originalText = btn.innerHTML;
+                                  btn.innerHTML = '✓';
+                                  btn.style.background = palette.purple;
+                                  setTimeout(() => {
+                                    btn.innerHTML = originalText;
+                                    btn.style.background = palette.mint;
+                                  }, 800);
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  top: 8,
+                                  right: 10,
+                                  width: 30,
+                                  height: 30,
+                                  background: palette.mint,
+                                  borderRadius: 8,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  border: `1.5px solid ${palette.sage}`,
+                                  boxShadow: `0 1.5px 6px 0 ${palette.sand}22`,
+                                  zIndex: 5,
+                                  padding: 0,
+                                  transition: 'all 0.2s ease'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.08)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                                title="Copy to clipboard"
+                              >
+                                <svg viewBox="0 0 20 20" width={16} height={16} style={{ fill: palette.black }}>
+                                  <path d="M6 2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V6.828A2 2 0 0 0 15.414 6L12 2.586A2 2 0 0 0 10.828 2H6zm0 2h4.828L16 7.172V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4zm2 4a1 1 0 0 1 1-1h2a1 1 0 1 1 0 2h-2a1 1 0 0 1-1-1z"/>
+                                </svg>
+                              </button>
+
+                              <div style={{ 
+                                marginBottom: '1rem'
+                              }}>
+                                <div style={{ 
+                                  fontWeight: 600, 
+                                  color: palette.purple, 
+                                  fontSize: '0.9rem', 
+                                  marginBottom: '0.5rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px'
+                                }}>
+                                  Generated Message:
+                                </div>
+                                <div style={{ 
+                                  color: palette.black, 
+                                  padding: '1.2rem',
+                                  background: `${palette.cream}AA`,
+                                  borderRadius: '8px',
+                                  border: `1px solid ${palette.sage}22`,
+                                  fontSize: '1rem',
+                                  lineHeight: 1.6,
+                                  minHeight: 'auto',
+                                  maxHeight: 'none',
+                                  height: 'auto',
+                                  wordBreak: 'break-word',
+                                  whiteSpace: 'pre-wrap',
+                                  overflow: 'visible'
+                                }} dangerouslySetInnerHTML={{ __html: h.output }} />
+                              </div>
+                              
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem' }}>
+                                <div style={{ fontSize: '0.85rem', color: palette.sage, fontWeight: 500 }}>
+                                  Created: {new Date(h.timestamp).toLocaleString()}
+                                </div>
+                                
+                                {/* Export button */}
+                                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const text = h.output.replace(/<br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, '');
+                                      const blob = new Blob([text], { type: 'text/plain' });
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = `freelance-message-${i + 1}.txt`;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      setTimeout(() => {
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
+                                      }, 100);
+                                    }}
+                                    style={{ 
+                                      background: `linear-gradient(135deg, ${palette.sage} 0%, ${palette.mint} 100%)`, 
+                                      border: 'none', 
+                                      borderRadius: 8, 
+                                      padding: '0.4rem 1rem', 
+                                      fontWeight: 600, 
+                                      color: palette.black, 
+                                      cursor: 'pointer', 
+                                      fontSize: '0.9rem', 
+                                      boxShadow: `0 2px 6px 0 ${palette.sage}33`,
+                                      transition: 'all 0.15s ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(-1px)';
+                                      e.currentTarget.style.boxShadow = `0 4px 12px 0 ${palette.sage}44`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.boxShadow = `0 2px 6px 0 ${palette.sage}33`;
+                                    }}
+                                    title="Download as text file"
+                                  >
+                                    💾 Export
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {/* Donate button */}
                 <div style={{ marginTop: '1.1rem', textAlign: 'center' }}>
@@ -1311,9 +2096,6 @@ TONE PREFERENCE: ${template}`;
             gap: '0.7rem',
           }}
         >
-          <span style={{ color: palette.black, fontWeight: 600, background: `${palette.cream}CC`, borderRadius: 8, padding: '0.2rem 0.7rem', boxShadow: `0 1px 6px 0 ${palette.sand}22` }}>
-            Free forever. If this helps, consider a small tip.
-          </span>
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', justifyContent: 'center' }}>
             {/* UPI donate if configured */}
             {makeUpiLink(50) && (
@@ -1348,16 +2130,15 @@ TONE PREFERENCE: ${template}`;
   {/* Studio-style sections */}
   <Services />
   <Testimonials />
-  <Logos />
   <div id="capabilities"><Capabilities /></div>
               </section>
             </main>
             <Contact />
             <Footer />
-            {/* Hide text cursor (I-beam) on all input fields */}
+            {/* Input field styling */}
             <style>{`
               input, input:focus, input:hover, textarea, textarea:focus, textarea:hover {
-                cursor: none !important;
+                cursor: text !important;
               }
               
               /* Hardware acceleration and performance optimizations */
@@ -1392,37 +2173,131 @@ TONE PREFERENCE: ${template}`;
                 }
               }
               
-              /* Optimize animations for 60fps */
+              /* Optimize animations for TRUE 120fps performance */
               [data-framer-component] {
                 will-change: transform, opacity;
                 transform: translate3d(0, 0, 0);
                 backface-visibility: hidden;
+                contain: layout style paint;
               }
               
-              /* Smooth transitions for all interactive elements */
+              /* Ultra-smooth 120fps transitions for all interactive elements */
               button, input, [role="button"] {
-                transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), 
-                           opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-                           background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-                           border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
-                           box-shadow 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+                transition: transform 0.06s cubic-bezier(0.25, 0.46, 0.45, 0.94), 
+                           opacity 0.06s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                           background 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                           border-color 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                           box-shadow 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
                 will-change: transform;
+                backface-visibility: hidden;
+                transform: translateZ(0);
               }
               
-              /* Optimize scroll performance */
+              /* Ultra-optimized 120fps scroll performance */
               html {
                 scroll-behavior: smooth;
+                scroll-snap-type: y proximity;
+                transform: translateZ(0); /* Force hardware acceleration */
               }
               
-              /* Optimize repaints */
+              /* Maximum performance containment and 120fps optimization */
               .motion-div {
                 contain: layout style paint;
+                will-change: transform, opacity;
+                backface-visibility: hidden;
+                transform: translateZ(0); /* Hardware acceleration */
+              }
+              
+              /* Ultra-smooth scrolling performance with 120fps support */
+              body {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
+                scroll-behavior: smooth;
+                transform: translateZ(0); /* Hardware acceleration */
+                contain: layout style;
+              }
+              
+              /* Additional 120fps optimizations for all animations */
+              * {
+                box-sizing: border-box;
+                -webkit-transform: translateZ(0);
+                -moz-transform: translateZ(0);
+                -ms-transform: translateZ(0);
+                -o-transform: translateZ(0);
+                transform: translateZ(0);
+              }
+              
+              /* Ultra-smooth scrolling with 120fps support */
+              html, body {
+                scroll-behavior: smooth !important;
+                -webkit-scroll-behavior: smooth !important;
+                scrollbar-width: thin;
+                scrollbar-color: ${palette.sand} transparent;
+              }
+              
+              /* Smooth webkit scrollbar */
+              ::-webkit-scrollbar {
+                width: 8px;
+              }
+              
+              ::-webkit-scrollbar-track {
+                background: transparent;
+              }
+              
+              ::-webkit-scrollbar-thumb {
+                background: ${palette.sand};
+                border-radius: 4px;
+              }
+              
+              ::-webkit-scrollbar-thumb:hover {
+                background: ${palette.purple};
+              }
+              
+              /* Force GPU acceleration on all animated elements */
+              [style*="transform"], 
+              .motion-div,
+              [class*="motion-"] {
+                will-change: transform, opacity;
+                backface-visibility: hidden;
+                transform: translateZ(0);
+                contain: layout style paint;
+              }
+              
+              /* 120fps animation optimization */
+              @keyframes slideDown {
+                from {
+                  height: 0;
+                  opacity: 0;
+                  transform: translateY(-4px);
+                }
+                to {
+                  height: auto;
+                  opacity: 1;
+                  transform: translateY(0);
+                }
+              }
+              
+              /* Force 120fps hardware acceleration */
+              * {
+                transform: translateZ(0);
+                backface-visibility: hidden;
+                perspective: 1000px;
+              }
+              
+              /* Reduce motion for performance */
+              @media (prefers-reduced-motion: reduce) {
+                *, *::before, *::after {
+                  animation-duration: 0.01ms !important;
+                  animation-iteration-count: 1 !important;
+                  transition-duration: 0.01ms !important;
+                  scroll-behavior: auto !important;
+                }
               }
               
               /* Mobile cursor handling */
               @media (pointer: coarse) {
                 * {
-                  cursor: auto !important;
+                  cursor: default !important;
                 }
               }
             `}</style>

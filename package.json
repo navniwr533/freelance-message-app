@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
     "@types/node": "^24.2.1",
     "@vercel/node": "^5.3.11",
     "framer-motion": "^12.23.12",

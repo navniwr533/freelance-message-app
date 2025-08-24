@@ -21,25 +21,24 @@
 }
 
 html, body, #root { height: 100%; }
-html { scroll-behavior: smooth; overflow-x: hidden; cursor: none; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
 /* Keep a stable scrollbar gutter to avoid layout shifts while scrolling */
-body { margin: 0; background: var(--bg); color: var(--fg); overflow-x: hidden; cursor: none; scrollbar-gutter: stable both-edges; }
+body { margin: 0; background: var(--bg); color: var(--fg); overflow-x: hidden; scrollbar-gutter: stable both-edges; }
 
 .container { max-width: 1100px; margin: 0 auto; padding: 0 var(--space); }
-.btn { border: none; border-radius: var(--radius); font-weight: 800; cursor: none; }
+.btn { border: none; border-radius: var(--radius); font-weight: 800; }
 .btn-brand { background: linear-gradient(90deg, var(--brand) 0%, var(--accent) 100%); color: white; box-shadow: 0 3px 16px color-mix(in oklab, var(--brand), transparent 65%); }
 .muted { color: var(--muted); }
 .h1 { font-size: var(--h1); font-weight: 800; letter-spacing: -0.02em; }
 .h2 { font-size: var(--h2); font-weight: 800; letter-spacing: -0.01em; }
 .h3 { font-size: var(--h3); font-weight: 800; }
 
-a { color: var(--brand); cursor: none; }
+a { color: var(--brand); }
 a:focus-visible, button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
 
 /* Smooth interactions */
 a, button, .btn {
   transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .15s ease;
-  cursor: none;
 }
 
 /* Logo strip hover polish */
@@ -88,19 +87,19 @@ a, button, .btn {
 .generator-output {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* Internet Explorer 10+ */
-  cursor: none;
 }
 .generator-output::-webkit-scrollbar {
   display: none; /* WebKit */
 }
 
-/* Global cursor override - only for devices with fine pointer (mouse/trackpad) */
+/*
+Global cursor override - COMMENTED OUT - using default cursors now
 @media (pointer: fine) {
   *, *::before, *::after {
     cursor: none !important;
   }
   
-  /* Specific elements that might show default cursor */
+  Specific elements that might show default cursor
   input, textarea, select, button, a, [role="button"] {
     cursor: none !important;
   }
@@ -110,7 +109,7 @@ a, button, .btn {
   }
 }
 
-/* Touch devices should use default cursor/no cursor */
+Touch devices should use default cursor/no cursor
 @media (pointer: coarse) {
   *, *::before, *::after {
     cursor: auto !important;
@@ -119,6 +118,20 @@ a, button, .btn {
   html, body {
     cursor: auto !important;
   }
+}
+*/
+
+/* Ensure proper cursor visibility for interactive elements */
+button, a, [role="button"], .btn {
+  cursor: pointer !important;
+}
+
+input, textarea, select {
+  cursor: text !important;
+}
+
+* {
+  cursor: auto;
 }
 
 /* Responsive Design */

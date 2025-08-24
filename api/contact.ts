@@ -1,5 +1,62 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Simple email notification using a webhook or email service
+async function sendEmailNotification(payload: any) {
+  // Try multiple email services for reliability
+  const services = [
+    // Formspree (reliable and free)
+    {
+      url: 'https://formspree.io/f/xldebkqr', // You'll need to replace this with your Formspree endpoint
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: payload.name,
+        email: payload.email,
+        message: payload.message,
+        company: payload.company,
+        website: payload.website,
+        _replyto: payload.email,
+        _subject: `New Contact: ${payload.name}`,
+      })
+    }
+  ];
+
+  // Try Discord webhook as backup notification
+  const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+  if (DISCORD_WEBHOOK) {
+    try {
+      await fetch(DISCORD_WEBHOOK, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: `🔔 **New Contact Form Submission**\n\n**Name:** ${payload.name}\n**Email:** ${payload.email}\n**Company:** ${payload.company || 'N/A'}\n**Website:** ${payload.website || 'N/A'}\n\n**Message:**\n${payload.message}\n\n**Time:** ${payload.ts}`
+        })
+      });
+    } catch (e) {
+      console.warn('Discord notification failed', e);
+    }
+  }
+
+  // Try primary email service
+  for (const service of services) {
+    try {
+      const response = await fetch(service.url, {
+        method: 'POST',
+        headers: service.headers,
+        body: service.body
+      });
+      
+      if (response.ok) {
+        console.log('Email sent successfully via service');
+        return;
+      }
+    } catch (error) {
+      console.warn('Email service failed:', error);
+    }
+  }
+  
+  throw new Error('All email services failed');
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -36,6 +93,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ua: req.headers['user-agent'] || '',
       ts: new Date().toISOString(),
     };
+
+    // Send email notification to your Gmail
+    try {
+      await sendEmailNotification(payload);
+    } catch (e) {
+      console.warn('Email notification failed, but continuing...', e);
+      // Don't fail the entire request if email fails
+    }
 
     // Optional webhook for notifications
     const hook = process.env.CONTACT_WEBHOOK_URL;
