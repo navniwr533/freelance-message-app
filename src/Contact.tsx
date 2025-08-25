@@ -8,13 +8,19 @@ const palette = {
   white: '#fff',
 };
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import emailjs from '@emailjs/browser';
 
 export default function Contact() {
   const [sending, setSending] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string; message?: string } | null>(null);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Initialize EmailJS on component mount
+  useEffect(() => {
+    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'MeqkzNk-EbN_AawXF';
+    emailjs.init(publicKey);
+  }, []);
   return (
     <section id="contact" style={{ position: 'relative', overflow: 'hidden', padding: '5rem 1.2rem', background: '#F5F1EA', borderTop: `1px solid ${palette.sand}55` }}>
       {/* local subtle tint + vignette, very faint */}
@@ -45,10 +51,12 @@ export default function Contact() {
             try {
               setSending(true);
               
+              // Store form reference before async call
+              const form = e.currentTarget as HTMLFormElement;
+              
               // EmailJS configuration - using environment variables
-              const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_default';
-              const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_default';
-              const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'your_public_key';
+              const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_b9g7ce2';
+              const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_6iowtw1';
               
               // Prepare email template parameters
               const templateParams = {
@@ -61,15 +69,27 @@ export default function Contact() {
               };
               
               // Send email using EmailJS
-              await emailjs.send(serviceId, templateId, templateParams, publicKey);
+              console.log('Sending email with params:', templateParams);
+              console.log('Service ID:', serviceId);
+              console.log('Template ID:', templateId);
               
-              (e.currentTarget as HTMLFormElement).reset();
+              const result = await emailjs.send(serviceId, templateId, templateParams);
+              console.log('EmailJS success:', result);
+              
+              form.reset();
               try { (window as any).plausible?.('Contact Submitted'); } catch {}
               setNotice({ ok: true, text: 'Thanks! I will get back to you shortly.' });
             } catch (error) {
-              console.error('EmailJS error:', error);
+              console.error('EmailJS error details:', error);
+              console.error('Error status:', (error as any)?.status);
+              console.error('Error text:', (error as any)?.text);
               try { (window as any).plausible?.('Contact Submit Failed'); } catch {}
-              setNotice({ ok: false, text: 'Failed to send. Please email me at ns9365967@gmail.com' });
+              
+              let errorMessage = 'Failed to send. Please email me at ns9365967@gmail.com';
+              if ((error as any)?.text) {
+                errorMessage = `Failed to send: ${(error as any).text}`;
+              }
+              setNotice({ ok: false, text: errorMessage });
             } finally {
               setSending(false);
             }
@@ -94,7 +114,20 @@ export default function Contact() {
           <label style={{ display: 'contents' }}>
             <span className="visually-hidden">Message</span>
             <textarea name="message" placeholder="Tell me about your project" required rows={5} aria-invalid={!!errors?.message} aria-describedby={errors?.message ? 'err-message' : undefined}
-              style={{ gridColumn: 'span 2', padding: '0.8rem 1rem', borderRadius: 10, border: `1.5px solid ${palette.sand}`, background: palette.cream, color: palette.black, cursor: 'none', outline: 'none' }} />
+              style={{ 
+                gridColumn: 'span 2', 
+                padding: '0.8rem 1rem', 
+                borderRadius: 10, 
+                border: `1.5px solid ${palette.sand}`, 
+                background: palette.cream, 
+                color: palette.black, 
+                cursor: 'pointer', 
+                outline: 'none',
+                resize: 'none',
+                minHeight: '120px',
+                maxHeight: '120px',
+                height: '120px'
+              }} />
           </label>
           {errors?.message && <div id="err-message" style={{ gridColumn: 'span 2', color: '#f87171', fontSize: 12 }}>{errors.message}</div>}
           {/* Honeypot */}
