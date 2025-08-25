@@ -29,37 +29,37 @@ interface Client {
   }>;
 }
 
-interface Proposal {
-  id: string;
-  clientName: string;
-  projectTitle: string;
-  scope: string;
-  timeline: string;
-  budget: number;
-  terms: string;
-  createdAt: Date;
-  status: 'draft' | 'sent' | 'accepted' | 'rejected';
-}
+// interface Proposal {
+//   id: string;
+//   clientName: string;
+//   projectTitle: string;
+//   scope: string;
+//   timeline: string;
+//   budget: number;
+//   terms: string;
+//   createdAt: Date;
+//   status: 'draft' | 'sent' | 'accepted' | 'rejected';
+// }
 
-interface Invoice {
-  id: string;
-  clientName: string;
-  projectTitle: string;
-  amount: number;
-  dueDate: Date;
-  status: 'draft' | 'sent' | 'paid' | 'overdue';
-  items: Array<{ description: string; amount: number }>;
-}
+// interface Invoice {
+//   id: string;
+//   clientName: string;
+//   projectTitle: string;
+//   amount: number;
+//   dueDate: Date;
+//   status: 'draft' | 'sent' | 'paid' | 'overdue';
+//   items: Array<{ description: string; amount: number }>;
+// }
 
-interface Project {
-  id: string;
-  clientName: string;
-  title: string;
-  status: 'lead' | 'proposal' | 'active' | 'completed' | 'lost';
-  value: number;
-  deadline: Date;
-  progress: number;
-}
+// interface Project {
+//   id: string;
+//   clientName: string;
+//   title: string;
+//   status: 'lead' | 'proposal' | 'active' | 'completed' | 'lost';
+//   value: number;
+//   deadline: Date;
+//   progress: number;
+// }
 import Services from './Services';
 import Testimonials from './Testimonials';
 
@@ -113,8 +113,8 @@ function App() {
   const [origin, setOrigin] = useState<'ai' | 'fallback'>('ai');
   const [genError, setGenError] = useState<string | null>(null);
   const [hasApiKey] = useState<boolean>(() => !!(import.meta as any).env?.VITE_OPENROUTER_API_KEY);
-  // Expose OpenRouter API key
-  const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
+  // Expose OpenRouter API key (commented out to fix build warning)
+  // const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
   // Input focus state for hint logic
   const [projectFocused, setProjectFocused] = useState(false);
   const [intentFocused, setIntentFocused] = useState(false);
@@ -137,7 +137,7 @@ function App() {
   const [template, setTemplate] = useState(templates[0].value);
   // Loading states for better UX
   const [loading, setLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState('Generate');
+  // const [loadingText, setLoadingText] = useState('Generate'); // Commented out to fix build warning
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   
@@ -147,35 +147,35 @@ function App() {
     const saved = localStorage.getItem('freelanceClients');
     return saved ? JSON.parse(saved) : [];
   });
-  const [proposals, setProposals] = useState<Proposal[]>(() => {
-    const saved = localStorage.getItem('freelanceProposals');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [invoices, setInvoices] = useState<Invoice[]>(() => {
-    const saved = localStorage.getItem('freelanceInvoices');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem('freelanceProjects');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // const [proposals, setProposals] = useState<Proposal[]>(() => {
+  //   const saved = localStorage.getItem('freelanceProposals');
+  //   return saved ? JSON.parse(saved) : [];
+  // });
+  // const [invoices, setInvoices] = useState<Invoice[]>(() => {
+  //   const saved = localStorage.getItem('freelanceInvoices');
+  //   return saved ? JSON.parse(saved) : [];
+  // });
+  // const [projects, setProjects] = useState<Project[]>(() => {
+  //   const saved = localStorage.getItem('freelanceProjects');
+  //   return saved ? JSON.parse(saved) : [];
+  // });
   
   // Save data to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('freelanceClients', JSON.stringify(clients));
   }, [clients]);
 
-  useEffect(() => {
-    localStorage.setItem('freelanceProposals', JSON.stringify(proposals));
-  }, [proposals]);
+  // useEffect(() => {
+  //   localStorage.setItem('freelanceProposals', JSON.stringify(proposals));
+  // }, [proposals]);
 
-  useEffect(() => {
-    localStorage.setItem('freelanceInvoices', JSON.stringify(invoices));
-  }, [invoices]);
+  // useEffect(() => {
+  //   localStorage.setItem('freelanceInvoices', JSON.stringify(invoices));
+  // }, [invoices]);
 
-  useEffect(() => {
-    localStorage.setItem('freelanceProjects', JSON.stringify(projects));
-  }, [projects]);
+  // useEffect(() => {
+  //   localStorage.setItem('freelanceProjects', JSON.stringify(projects));
+  // }, [projects]);
   
   // For global custom cursor (optimized initialization) - COMMENTED OUT
   // const [cursorPos, setCursorPos] = useState(() => {
@@ -2336,7 +2336,7 @@ ${selectedTone === 'concise' ?
                 transform: 'translateZ(0)',
               }}
             >
-              {loading ? loadingText : 'Generate'}
+              {loading ? 'Generating...' : 'Generate'}
             </motion.button>
           </motion.form>
           <div
