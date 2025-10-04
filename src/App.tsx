@@ -61,8 +61,6 @@ function App() {
   const [origin, setOrigin] = useState<'ai' | 'fallback'>('ai');
   const [genError, setGenError] = useState<string | null>(null);
   const [hasApiKey] = useState<boolean>(() => !!(import.meta as any).env?.VITE_OPENROUTER_API_KEY);
-  // Expose OpenRouter API key
-  const OPENROUTER_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY as string | undefined;
   // Input focus state for hint logic
   const [projectFocused, setProjectFocused] = useState(false);
   const [intentFocused, setIntentFocused] = useState(false);
@@ -85,7 +83,6 @@ function App() {
   const [template, setTemplate] = useState(templates[0].value);
   // Loading states for better UX
   const [loading, setLoading] = useState(false);
-  const [loadingText, setLoadingText] = useState('Generate');
   const [copied, setCopied] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   // For global custom cursor (optimized initialization) - COMMENTED OUT
@@ -258,154 +255,260 @@ function App() {
     return cleanMessage(result);
   }
 
-  // Enhanced tone instruction system with your specific implementation
+  // Enhanced tone instruction system with Claude 4.1's upgraded logic
   const getToneInstructions = (selectedTone: string): {
     systemInstructions: string;
     userPrefix: string;
     modelParams: { maxTokens: number; temperature: number; topP: number };
   } => {
-    const baseParams = { maxTokens: 350, temperature: 0.7, topP: 0.9 };
+    const baseParams = { maxTokens: 450, temperature: 0.7, topP: 0.9 };
+    
+    // UNIVERSAL READABILITY INSTRUCTIONS (applies to ALL tones)
+    const universalFormatting = `
+UNIVERSAL FORMATTING RULES (USE INTELLIGENTLY):
+- Use **bold** for key information (prices, dates, deliverables, important points)
+- Use bullet points (- ) when listing 3+ items or features
+- Use numbered lists (1. 2. 3.) for sequential steps or phases
+- Break into paragraphs for different topics (when message > 50 words)
+- Use line breaks strategically for visual clarity
+- Add subtle section headers when covering multiple topics
+
+MANDATORY BOLD & HEADING USAGE:
+- ALL TONES (except concise): MUST use **bold text** for emphasis and section headings
+- Section headings can appear at top, middle, or throughout the message as needed
+- Examples: "**Project Details:**", "**Timeline:**", "**Next Steps:**", "**Pricing:**"
+- CONCISE TONE: Use **bold** selectively for 2-3 key words/phrases only
+- Always bold important numbers, dates, and deliverables
+
+INTELLIGENT FORMATTING:
+- Short messages (< 30 words): Bold key words, minimal structure
+- Medium messages (30-100 words): Bold emphasis + 1-2 section headings
+- Long messages (100+ words): Full formatting with multiple **headings**, paragraphs, lists
+- Match formatting complexity to content complexity`;
+
+    // ADAPTIVE CONCISE RULES (for optimal length based on input complexity)
+    const adaptiveConciseRules = `
+ADAPTIVE CONCISE RULES:
+- Input < 20 words → Response: 30-60 words (brief and direct)
+- Input 20-50 words → Response: 40-80 words (balanced detail)
+- Input 50+ words → Response: 60-120 words (comprehensive coverage)
+- Always prioritize clarity over brevity
+- Include all essential information regardless of length`;
+
+    // ADAPTIVE TOKEN LIMITS
+    const adaptiveConciseTokens = 300; // Balanced for all content types
     
     switch (selectedTone) {
       case 'formal':
         return {
           systemInstructions: `
 MANDATORY TONE: FORMAL BUSINESS COMMUNICATION
-Writing style requirements:
-- Use complete sentences with proper grammar
-- Formal vocabulary ("regarding" not "about", "however" not "but")
+${universalFormatting}
+
+FORMAL SPECIFIC REQUIREMENTS:
+- Complete sentences with proper grammar
+- Formal vocabulary ("regarding" not "about", "furthermore" not "also")
 - NO contractions (use "I am" not "I'm", "cannot" not "can't")
-- Professional distance while remaining helpful
-- Structured paragraphs with clear transitions
+- Professional structure with clear sections
+- Use transitional phrases between paragraphs
 
-Example phrases AS THE FREELANCER:
-- "I would be pleased to undertake this project..."
-- "Based on your requirements, I propose..."
-- "I can ensure delivery within the specified timeframe..."
-- "Please find below my detailed proposal..."
+FORMAL STRUCTURE:
+1. **Opening**: Professional acknowledgment
+2. **Main Body**: Organized with clear sections
+3. **Details**: Bullet points for specifications
+4. **Closing**: Clear next steps or call to action
 
-Format for clarity:
-- Use **bold** for important terms, prices, and dates
-- Bullet points for listing deliverables or features
-- Clear paragraph breaks between different topics`,
-          userPrefix: "Write a FORMAL business message from freelancer to client:",
-          modelParams: { ...baseParams, temperature: 0.5, topP: 0.85 }
-        };
-        
-      case 'friendly':
-        return {
-          systemInstructions: `
+Example formatting:
+"**Project Proposal for [Project Name]**
+
+I am pleased to present my proposal regarding your requirements. 
+
+**Scope of Work:**
+- Comprehensive analysis of...
+- Development of...
+- Implementation of...
+
+**Timeline:** The project will require..."`,
+            userPrefix: "Write a FORMAL business message with professional formatting:",
+            modelParams: { ...baseParams, temperature: 0.5, topP: 0.85 }
+          };
+          
+        case 'friendly':
+          return {
+            systemInstructions: `
 MANDATORY TONE: WARM AND APPROACHABLE
-Writing style requirements:
-- Conversational and enthusiastic language
+${universalFormatting}
+
+FRIENDLY SPECIFIC REQUIREMENTS:
+- Conversational language with enthusiasm
 - Use contractions naturally (I'm, we'll, it's)
-- Show genuine excitement with exclamation marks!
-- Create partnership feeling with inclusive language
-- Personal touches that build rapport
+- Exclamation marks for excitement!
+- Personal touches and empathy
+- Casual but organized structure
 
-Example phrases AS THE FREELANCER:
-- "I'm really excited about your project!"
-- "I'd love to help bring your vision to life!"
-- "This sounds like a perfect match for my skills!"
-- "Can't wait to get started on this!"
+FRIENDLY STRUCTURE:
+- Start with enthusiasm
+- Use **bold** to highlight exciting parts
+- Bullet points for fun features/benefits
+- Keep paragraphs short and punchy
+- End with engaging question or next step
 
-Format for engagement:
-- Use **bold** to highlight exciting aspects
-- Short paragraphs for easy reading
-- Bullet points for benefits or features (keep them punchy!)
-- Questions to encourage dialogue`,
-          userPrefix: "Write a FRIENDLY and enthusiastic message from freelancer to client:",
-          modelParams: { ...baseParams, temperature: 0.8, topP: 0.95 }
-        };
-        
-      case 'concise':
-        return {
-          systemInstructions: `
-MANDATORY: ULTRA-CONCISE MESSAGE
-CRITICAL RULES:
-1. Maximum 20 words total - ABSOLUTE LIMIT
-2. ONE sentence only
-3. NO formatting, NO bold, NO lists
-4. Essential information only
-5. Strong, direct statements
-6. Cut ALL filler words
+Example formatting:
+"I'm really excited about your project! 
 
-Example concise freelancer responses:
-- "I'll complete your website for $2000 by Friday."
-- "Timeline needs extending two weeks for quality."
-- "Project scope exceeds budget - proposing phased approach."
-- "Delivered milestone one - invoice attached for payment."`,
-          userPrefix: "Write ONLY the essential message in UNDER 20 WORDS:",
-          modelParams: { maxTokens: 50, temperature: 0.3, topP: 0.7 }
-        };
-        
-      case 'apology':
-        return {
-          systemInstructions: `
-MANDATORY TONE: SINCERE APOLOGY FROM FREELANCER TO CLIENT
-Structure your apology:
-1. Direct acknowledgment: "I apologize for [specific issue]"
-2. Take responsibility: "I should have [what you should have done]"
-3. Impact acknowledgment: "I understand this has caused [specific impact]"
-4. Concrete solution: "To fix this, I will [specific actions]"
-5. Prevention: "Going forward, I will [preventive measures]"
+**What I love about this:**
+- The creative freedom you're offering
+- The potential impact on users
+- The innovative approach
 
-Example phrases AS THE FREELANCER:
-- "I sincerely apologize for missing the deadline..."
-- "I take full responsibility for the miscommunication..."
-- "To make this right, I will work through the weekend..."
-- "You have every right to be frustrated..."
+Let me share how we can make this amazing..."`,
+            userPrefix: "Write a FRIENDLY message with engaging formatting:",
+            modelParams: { ...baseParams, temperature: 0.8, topP: 0.95 }
+          };
+          
+        case 'concise':
+          return {
+            systemInstructions: `
+MANDATORY: CONCISE BUT COMPLETE MESSAGE
 
-Format for sincerity:
-- **Bold** the specific remedial actions
-- Clear paragraphs for each element
-- No excuses or deflection`,
-          userPrefix: "Write a SINCERE APOLOGY from freelancer to client:",
-          modelParams: { ...baseParams, temperature: 0.6 }
-        };
-        
-      case 'gratitude':
-        return {
-          systemInstructions: `
-MANDATORY TONE: GENUINE GRATITUDE FROM FREELANCER TO CLIENT
-Express appreciation structure:
-1. Specific thanks: What exactly are you grateful for?
-2. Impact: How does their action/support help you?
-3. Value: What does this mean for the project/relationship?
-4. Reciprocation: How you'll honor their trust/support
+ADAPTIVE CONCISE RULES:
+1. For SHORT inputs (< 50 words total): Maximum 30 words response
+2. For MEDIUM inputs (50-150 words): Maximum 60 words response  
+3. For LONG inputs (150+ words): Maximum 100 words response
+4. NEVER skip critical information from intent or project
+5. Use minimal but smart formatting
 
-Example phrases AS THE FREELANCER:
-- "Thank you so much for trusting me with this project!"
-- "Your clear feedback made all the difference..."
-- "I truly appreciate your patience during..."
-- "Your prompt payment allows me to..."
+CONCISE FORMATTING:
+- Use **bold** only for crucial points (prices, deadlines)
+- NO bullet points unless absolutely necessary
+- Single paragraph for short messages
+- 2-3 short paragraphs maximum for complex messages
+- Every word must earn its place
 
-Format for warmth:
-- **Bold** specific things you're grateful for
-- Personal touches showing genuine appreciation
-- Connect their action to positive outcomes`,
-          userPrefix: "Write a GRATEFUL message from freelancer to client:",
-          modelParams: { ...baseParams, temperature: 0.75 }
-        };
-        
-      default:
-        return {
-          systemInstructions: `
+PRIORITY ORDER (include in this order):
+1. Core action/response to intent
+2. Key details (price, timeline, deliverables)
+3. Next step
+4. (Skip pleasantries and fluff)
+
+Example for complex input:
+"**\$2000** for complete website development. **3-week timeline** includes design, development, testing. 
+
+Covers all requirements: responsive design, payment integration, SEO optimization. 
+
+Start Monday?"`,
+            userPrefix: "Write a CONCISE but COMPLETE message (adapt length to input complexity):",
+            modelParams: { maxTokens: 150, temperature: 0.4, topP: 0.75 }
+          };
+          
+        case 'apology':
+          return {
+            systemInstructions: `
+MANDATORY TONE: INTELLIGENT ADAPTIVE APOLOGY
+
+FIRST: ANALYZE THE SITUATION SEVERITY:
+1. Read the project summary and intent carefully
+2. Detect the severity level:
+   - MINOR ISSUE: Small delay, minor miscommunication, slight inconvenience
+   - MODERATE ISSUE: Missed deadline, quality concerns, budget overrun
+   - MAJOR ISSUE: Project failure, broken trust, significant loss
+   - RELATIONSHIP CONTEXT: New client vs long-term client
+
+ADAPTIVE APOLOGY LEVELS:
+
+**LEVEL 1 - LIGHT ACKNOWLEDGMENT (Minor Issues):**
+- Simple acknowledgment: "I understand the confusion about..."
+- Light regret: "I should have communicated this earlier..."
+- Quick solution: "Let me clarify/fix this right away..."
+- Tone: Professional but not overly apologetic
+Example: "I see where the miscommunication happened. Let me clarify the timeline - the design phase takes 3 days, not 2 as you understood. I should have been clearer about this."
+
+**LEVEL 2 - MODERATE APOLOGY (Medium Issues):**
+- Clear apology: "I apologize for the delay in..."
+- Responsibility: "This was my oversight and I take responsibility..."
+- Compensation: "To make up for this, I will..."
+- Tone: Genuinely apologetic but maintaining professionalism
+Example: "I apologize for missing yesterday's deadline. This was my oversight and I take responsibility. To make up for this, I'll prioritize your project today and deliver by evening, plus add an extra revision round at no charge."
+
+**LEVEL 3 - DEEP APOLOGY (Major Issues):**
+- Strong opening: "I sincerely apologize for..."
+- Full accountability: "I take complete responsibility..."
+- Impact acknowledgment: "I understand this has caused significant..."
+- Major compensation: "To make this right, I will..."
+- Future prevention: "I've implemented new processes to ensure..."
+- Tone: Deeply apologetic, showing genuine remorse
+Example: "I sincerely apologize for the complete failure to deliver your project on time. I take complete responsibility for this significant breach of trust. I understand this has impacted your business launch. To make this right, I will work through the weekend at no additional charge and provide a 30% discount. I've also implemented new project tracking to ensure this never happens again."
+
+INTELLIGENCE RULES:
+1. If the intent mentions "small" "slight" "minor" → Use Level 1
+2. If the intent mentions "missed" "late" "wrong" → Use Level 2  
+3. If the intent mentions "failed" "ruined" "disaster" → Use Level 3
+4. If client is described as "understanding" "flexible" → Reduce level by 1
+5. If client is described as "angry" "upset" "furious" → Increase level by 1
+6. For long-term clients mentioned → Add personal touch
+7. For new clients → Be more formal
+
+NEVER OVER-APOLOGIZE:
+- Don't apologize if the freelancer did nothing wrong
+- Don't apologize for client's mistakes
+- Don't apologize for industry-standard practices
+- Match apology intensity to actual fault level
+
+FORMATTING:
+- Level 1: Single paragraph, minimal formatting
+- Level 2: 2-3 paragraphs with **bold** key points
+- Level 3: Full structured format with clear sections
+
+${universalFormatting}
+${adaptiveConciseRules}`,
+            userPrefix: "Write an APPROPRIATELY SCALED apology based on the severity:",
+            modelParams: { ...baseParams, temperature: 0.6, maxTokens: adaptiveConciseTokens }
+          };
+          
+        case 'gratitude':
+          return {
+            systemInstructions: `
+MANDATORY TONE: GENUINE GRATITUDE
+${universalFormatting}
+
+GRATITUDE SPECIFIC STRUCTURE:
+**Opening:** Specific thanks
+"Thank you for [specific action/support]"
+
+**Impact:** How it helps (use bullets if multiple)
+- Personal impact
+- Project impact
+- Future possibilities
+
+**Recognition:** Acknowledge their effort
+"Your [specific quality] made this possible"
+
+**Reciprocation:** How you'll honor their trust
+"In return, I will deliver..."
+
+Use **bold** to emphasize what you're grateful for.`,
+            userPrefix: "Write a GRATEFUL message with warm formatting:",
+            modelParams: { ...baseParams, temperature: 0.75 }
+          };
+          
+        default:
+          return {
+            systemInstructions: `
 TONE: BALANCED PROFESSIONAL
-- Clear and direct communication
-- Professional yet approachable
-- Focus on value and solutions
-- Appropriate detail level
+${universalFormatting}
 
-Format professionally:
+DEFAULT STRUCTURE:
+- Clear topic introduction
 - **Bold** key information
-- Bullet points where helpful
-- Clear paragraph structure`,
-          userPrefix: "Write a professional message from freelancer to client:",
-          modelParams: baseParams
-        };
-    }
-  };
+- Bullets for lists (3+ items)
+- Numbered steps for processes
+- Paragraphs for different topics
+- Strong closing with next steps`,
+            userPrefix: "Write a professional message with optimal formatting:",
+            modelParams: baseParams
+          };
+      }
+    };
 
   // Smart fallback when AI APIs fail - uses intent classification
   function generateOfflineFallback(project: string, intent: string, template: string): string {
@@ -1473,7 +1576,7 @@ ${selectedTone === 'concise' ?
                 transform: 'translateZ(0)',
               }}
             >
-              {loading ? loadingText : 'Generate'}
+              {loading ? 'Generating...' : 'Generate'}
             </motion.button>
           </motion.form>
           <div

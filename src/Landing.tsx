@@ -270,7 +270,8 @@ export default function Landing({ onStart }: Props) {
               minHeight: '48px',
               willChange: 'transform, background-color',
               outline: 'none',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              transition: 'border-color 0.12s linear, box-shadow 0.12s linear, background 0.12s linear, color 0.12s linear, transform 0.10s linear'
             }}
           >
             Start crafting
@@ -281,55 +282,20 @@ export default function Landing({ onStart }: Props) {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.9 }}
-          transition={{ duration: 0.4, delay: 1.0, ease: [0.16, 1, 0.3, 1] }}
-          style={{ 
-            position: 'absolute', 
-            bottom: 'clamp(12px, 3vw, 20px)', 
-            width: '100%', 
-            overflow: 'hidden',
-            willChange: 'opacity'
-          }} 
+          transition={{ duration: 1, delay: 1.6 }}
+          style={{ position: 'absolute', bottom: 20, width: '100%', overflow: 'hidden' }} 
           aria-hidden
         >
-          <div 
-            data-marquee
-            style={{ 
-              display: 'flex', 
-              gap: 0, 
-              whiteSpace: 'nowrap', 
-              animation: 'marquee 30s linear infinite', 
-              color: palette.purple, 
-              fontWeight: 600,
-              fontSize: 'clamp(0.75rem, 2vw, 0.9rem)',
-              willChange: 'transform',
-              transform: 'translate3d(0, 0, 0)',
-              backfaceVisibility: 'hidden'
-            }}>
-            {Array.from({ length: 50 }).map((_, i) => (
-              <span key={i} style={{ 
-                padding: '0 2rem',
-                flexShrink: 0,
-                display: 'inline-block'
-              }}>
-                Strategy · Tone · Clarity · Speed
-              </span>
+          <div style={{ display: 'flex', gap: 30, whiteSpace: 'nowrap', animation: 'marquee 18s linear infinite', color: palette.purple, fontWeight: 600 }}>
+            {Array.from({ length: 12 }).map((_, i) => (
+              <span key={i} style={{ padding: '0 1rem' }}>Strategy · Tone · Clarity · Speed</span>
             ))}
           </div>
         </motion.div>
       </>
       
       <style>{`
-        @keyframes marquee { 
-          from { transform: translate3d(0, 0, 0); } 
-          to { transform: translate3d(-50%, 0, 0); } 
-        }
-        
-        /* Hardware acceleration for marquee */
-        [data-marquee] {
-          will-change: transform;
-          transform: translate3d(0, 0, 0);
-          backface-visibility: hidden;
-        }
+        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
       `}</style>
     </section>
   );

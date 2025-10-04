@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import './App.css';
 
 // Tone template options
@@ -282,7 +282,6 @@ Requirements:
 - Keep it natural and authentic`;
 
       let finalMessage = '';
-      let usedFallback = false;
       
       // Try each model in the smart order
       for (const model of models) {
@@ -331,7 +330,6 @@ Requirements:
       // If all AI models fail, use enhanced fallback
       if (!finalMessage) {
         finalMessage = generateOfflineFallback(project, intent, template);
-        usedFallback = true;
       }
       
       setOutput(finalMessage);
